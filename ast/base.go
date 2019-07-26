@@ -22,3 +22,13 @@ func (n *baseStmt) statement() {}
 type Expr struct {
 	baseNode
 }
+
+func (n *Expr) Accept(v Visitor) (Node, bool) {
+	newNode, skip := v.Enter(n)
+	if skip {
+		return v.Leave(n)
+	}
+	n = newNode.(*Expr)
+	// TODO
+	return v.Leave(n)
+}

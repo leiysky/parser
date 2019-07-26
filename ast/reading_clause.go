@@ -70,6 +70,8 @@ func (n *UnwindClause) Accept(v Visitor) (Node, bool) {
 	}
 	n = newNode.(*UnwindClause)
 	n.Expr.Accept(v)
-	n.Variable.Accept(v)
+	if n.Variable != nil {
+		n.Variable.Accept(v)
+	}
 	return v.Leave(n)
 }

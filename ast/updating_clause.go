@@ -6,6 +6,8 @@ const (
 	UpdatingClauseCreate UpdatingClauseType = iota
 	UpdatingClauseMerge
 	UpdatingClauseSet
+	UpdatingClauseDelete
+	UpdatingClauseRemove
 )
 
 type UpdatingClause struct {
@@ -15,6 +17,8 @@ type UpdatingClause struct {
 	Create *CreateClause
 	Merge  *MergeClause
 	Set    *SetClause
+	Delete *DeleteClause
+	Remove *RemoveClause
 }
 
 func (n *UpdatingClause) Accept(v Visitor) (Node, bool) {
@@ -131,9 +135,9 @@ type SetItemStmt struct {
 
 	Type     SetItemType
 	Property *PropertyExpr
-	Variable *SymbolicNameNode
+	Variable *VariableNode
 	Expr     *Expr
-	Labels   []*SchemaNameNode
+	Labels   []*NodeLabelNode
 }
 
 func (n *SetItemStmt) Accept(v Visitor) (Node, bool) {
@@ -181,6 +185,20 @@ func (n *DeleteClause) Accept(v Visitor) (Node, bool) {
 
 type RemoveClause struct {
 	baseStmt
+
+	RemoveItems []*RemoveItemStmt
+}
+
+func (n *RemoveClause) Accept(v Visitor) (Node, bool) {
+	newNode, skip := v.Enter(n)
+	if skip {
+		return v.Leave(n)
+	}
+	n = newNode.(*RemoveClause)
+	for _, item := range n.RemoveItems {
+		item.Accept(v)
+	}
+	return v.Leave(n)
 }
 
 type RemoveItemType int
@@ -194,8 +212,8 @@ type RemoveItemStmt struct {
 	baseStmt
 
 	Type     RemoveItemType
-	Variable *SymbolicNameNode
-	Labels   []*SchemaNameNode
+	Variable *VariableNode
+	Labels   []*NodeLabelNode
 	Property *PropertyExpr
 }
 
