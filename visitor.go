@@ -8,32 +8,18 @@ import (
 	"github.com/leiysky/parser/ast"
 )
 
+var (
+// _ CypherVisitor = &visitor{}
+)
+
 type visitor struct {
 	CypherVisitor
 	parser *CypherParser
-	// lexer *CypherLexer
-	// *BaseCypherVisitor
 }
 
 func (v *visitor) Visit(tree antlr.ParseTree) interface{} {
 	return tree.Accept(v)
 }
-
-// func (v *visitor) VisitChildren(node antlr.RuleNode) interface{} {
-// 	children := node.GetChildren()
-// 	for _, c := range children {
-// 		switch n := c.(type) {
-// 		case antlr.RuleNode:
-// 			n.Accept(v)
-
-// 		case antlr.TerminalNode:
-// 			v.VisitTerminal(n)
-// 		case antlr.ErrorNode:
-// 			v.VisitErrorNode(n)
-// 		}
-// 	}
-// 	return nil
-// }
 
 func (v *visitor) VisitChildren(node antlr.RuleNode) interface{} {
 	return nil
@@ -195,27 +181,6 @@ func (v *visitor) VisitUpdatingClause(ctx *UpdatingClauseContext) interface{} {
 		updatingClause.Type = ast.UpdatingClauseRemove
 		updatingClause.Remove = ctx.RemoveClause().Accept(v).(*ast.RemoveClause)
 	}
-	// switch v.parser.RuleNames[i.GetRuleIndex()] {
-	// case "createClause":
-	// 	updatingClause.Type = ast.UpdatingClauseCreate
-	// 	updatingClause.Create = ctx.CreateClause().Accept(v).(*ast.CreateClause)
-
-	// case "mergeClause":
-	// 	updatingClause.Type = ast.UpdatingClauseMerge
-	// 	updatingClause.Merge = ctx.MergeClause().Accept(v).(*ast.MergeClause)
-
-	// case "setClause":
-	// 	updatingClause.Type = ast.UpdatingClauseSet
-	// 	updatingClause.Set = ctx.SetClause().Accept(v).(*ast.SetClause)
-
-	// case "deleteClause":
-	// 	updatingClause.Type = ast.UpdatingClauseDelete
-	// 	updatingClause.Delete = ctx.DeleteClause().Accept(v).(*ast.DeleteClause)
-
-	// case "removeClause":
-	// 	updatingClause.Type = ast.UpdatingClauseRemove
-	// 	updatingClause.Remove = ctx.RemoveClause().Accept(v).(*ast.RemoveClause)
-	// }
 	return updatingClause
 }
 
@@ -392,7 +357,11 @@ func (v *visitor) VisitPatternPart(ctx *PatternPartContext) interface{} {
 		patternPart.WithVariable = true
 		patternPart.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
 	}
-	patternPart.Element = ctx.AnonymousPatternPart().Accept(v).(*AnonymousPatternPartContext).PatternElement().Accept(v).(*ast.PatternElement)
+	patternPart.Element = ctx.
+		AnonymousPatternPart().
+		Accept(v).(*AnonymousPatternPartContext).
+		PatternElement().
+		Accept(v).(*ast.PatternElement)
 	return patternPart
 }
 
@@ -594,14 +563,61 @@ func (v *visitor) VisitReturnClause(ctx *ReturnClauseContext) interface{} {
 
 func (v *visitor) VisitReturnBody(ctx *ReturnBodyContext) interface{} {
 	returnBody := &ast.ReturnBody{}
-	// TODO
+	var returnItems []*ast.ReturnItem
+	for _, item := range ctx.ReturnItems().Accept(v).(*ReturnItemsContext).AllReturnItem() {
+		returnItems = append(returnItems, item.Accept(v).(*ast.ReturnItem))
+	}
+	returnBody.ReturnItems = returnItems
+	if ctx.OrderClause() != nil {
+		returnBody.OrderBy = ctx.OrderClause().Accept(v).(*ast.OrderClause)
+	}
+	if ctx.SkipClause() != nil {
+		returnBody.Skip = ctx.SkipClause().(*SkipClauseContext).Expr().Accept(v).(*ast.Expr)
+	}
+	if ctx.LimitClause() != nil {
+		returnBody.Limit = ctx.LimitClause().(*LimitClauseContext).Expr().Accept(v).(*ast.Expr)
+	}
 	return returnBody
 }
 
 func (v *visitor) VisitReturnItems(ctx *ReturnItemsContext) interface{} {
-	return v.VisitChildren(ctx)
+	return ctx
 }
 
 func (v *visitor) VisitReturnItem(ctx *ReturnItemContext) interface{} {
-	return v.VisitChildren(ctx)
+	returnItem := &ast.ReturnItem{}
+	returnItem.Expr = ctx.Expr().Accept(v).(*ast.Expr)
+	if ctx.AS() != nil {
+		returnItem.As = true
+		returnItem.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
+	}
+	return returnItem
+}
+
+func (v *visitor) VisitOrderClause(ctx *OrderClauseContext) interface{} {
+	orderClause := &ast.OrderClause{}
+	var sortItems []*ast.SortItem
+	for _, item := range ctx.AllSortItem() {
+		sortItems = append(sortItems, item.Accept(v).(*ast.SortItem))
+	}
+	return orderClause
+}
+
+func (v *visitor) VisitSkipClause(ctx *SkipClauseContext) interface{} {
+	return ctx
+}
+
+func (v *visitor) VisitLimitClause(ctx *LimitClauseContext) interface{} {
+	return ctx
+}
+
+func (v *visitor) VisitSortItem(ctx *SortItemContext) interface{} {
+	sortItem := &ast.SortItem{}
+	sortItem.Expr = ctx.Expr().Accept(v).(*ast.Expr)
+	if ctx.ASC() != nil || ctx.ASCENDING() != nil {
+		sortItem.Type = ast.SortAscending
+	} else if ctx.DESC() != nil || ctx.DESCENDING() != nil {
+		sortItem.Type = ast.SortDescending
+	}
+	return sortItem
 }
