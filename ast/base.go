@@ -19,8 +19,14 @@ type baseStmt struct {
 
 func (n *baseStmt) statement() {}
 
-type Expr struct {
+type baseExpr struct {
 	baseNode
+}
+
+type Expr struct {
+	baseExpr
+
+	OrExpr *OrExpr
 }
 
 func (n *Expr) Accept(v Visitor) (Node, bool) {
@@ -29,6 +35,6 @@ func (n *Expr) Accept(v Visitor) (Node, bool) {
 		return v.Leave(n)
 	}
 	n = newNode.(*Expr)
-	// TODO
+	n.OrExpr.Accept(v)
 	return v.Leave(n)
 }

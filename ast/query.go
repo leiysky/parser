@@ -139,6 +139,53 @@ func (n *SinglePartQueryStmt) Accept(v Visitor) (Node, bool) {
 
 type MultiPartQueryStmt struct {
 	baseStmt
+
+	MultiPart  []*MultiPartQueryPartial
+	SinglePart *SinglePartQueryStmt
+}
+
+func (n *MultiPartQueryStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skip := v.Enter(n)
+	if skip {
+		return v.Leave(n)
+	}
+	n = newNode.(*MultiPartQueryStmt)
+	for _, part := range n.MultiPart {
+		for _, reading := range part.Readings {
+			reading.Accept(v)
+		}
+		for _, updating := range part.Updatings {
+			updating.Accept(v)
+		}
+		part.With.Accept(v)
+	}
+	n.SinglePart.Accept(v)
+	return v.Leave(n)
+}
+
+type MultiPartQueryPartial struct {
+	Readings  []*ReadingClause
+	Updatings []*UpdatingClause
+	With      *WithClause
+}
+
+type WithClause struct {
+	baseStmt
+
+	Distinct   bool
+	ReturnBody *ReturnBody
+	Where      *Expr
+}
+
+func (n *WithClause) Accept(v Visitor) (Node, bool) {
+	newNode, skip := v.Enter(n)
+	if skip {
+		return v.Leave(n)
+	}
+	n = newNode.(*WithClause)
+	n.ReturnBody.Accept(v)
+	n.Where.Accept(v)
+	return v.Leave(n)
 }
 
 type ReturnClause struct {

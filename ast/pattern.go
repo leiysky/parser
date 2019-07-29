@@ -173,7 +173,7 @@ type Properties struct {
 	baseNode
 
 	Type       PropertiesType
-	MapLiteral *MapLiteralNode
+	MapLiteral *MapLiteral
 	Parameter  *ParameterNode
 }
 
@@ -189,5 +189,31 @@ func (n *Properties) Accept(v Visitor) (Node, bool) {
 	case PropertiesParameter:
 		n.Parameter.Accept(v)
 	}
+	return v.Leave(n)
+}
+
+type PatternComprehension struct {
+	baseNode
+
+	Variable       *VariableNode
+	PatternElement *PatternElement
+	Where          *Expr
+	Expr           *Expr
+}
+
+func (n *PatternComprehension) Accept(v Visitor) (Node, bool) {
+	newNode, skip := v.Enter(n)
+	if skip {
+		return v.Leave(n)
+	}
+	n = newNode.(*PatternComprehension)
+	if n.Variable != nil {
+		n.Variable.Accept(v)
+	}
+	n.PatternElement.Accept(v)
+	if n.Where != nil {
+		n.Where.Accept(v)
+	}
+	n.Expr.Accept(v)
 	return v.Leave(n)
 }
