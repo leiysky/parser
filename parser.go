@@ -18,7 +18,7 @@ func (p *Parser) Parse(cypher string) ast.StmtNode {
 	tokenStream := antlr.NewCommonTokenStream(p.l, antlr.LexerDefaultTokenChannel)
 	parser := NewCypherParser(tokenStream)
 	tree := parser.Cypher()
-	v := &visitor{&BaseCypherVisitor{}, parser}
+	v := &convertVisitor{parser}
 	cypherStmt := v.Visit(tree).(ast.StmtNode)
 	return cypherStmt
 }
