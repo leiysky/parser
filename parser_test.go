@@ -22,10 +22,21 @@ func (v *testVisitor) Leave(node ast.Node) (ast.Node, bool) {
 
 func TestParser(t *testing.T) {
 	parser := New()
-	stmt := parser.Parse(`
+	parser.Parse(`
 MATCH (n)-[:Label *0123]-()
-WHERE n.id = 1
+WHERE n.id = n +1
 SET n = {}
 RETURN n`)
-	stmt.Accept(&testVisitor{})
+	// stmt.Accept(&testVisitor{})
+}
+
+func TestMultiPartQuery(t *testing.T) {
+	parser := New()
+	parser.Parse(`
+MATCH (n)
+SET n.id = 1
+WITH n
+MATCH (n)
+RETURN n
+`)
 }
