@@ -180,7 +180,6 @@ func (v *convertVisitor) VisitMatchClause(ctx *MatchClauseContext) interface{} {
 		match.Optional = true
 	}
 	if ctx.WhereClause() != nil {
-		match.WithWhere = true
 		match.Where = ctx.WhereClause().Accept(v).(*ast.Expr)
 	}
 	match.Pattern = ctx.Pattern().Accept(v).(*ast.Pattern)

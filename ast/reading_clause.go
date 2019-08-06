@@ -37,10 +37,9 @@ func (n *ReadingClause) Accept(v Visitor) (Node, bool) {
 type MatchClause struct {
 	baseStmt
 
-	Pattern   *Pattern
-	Optional  bool
-	WithWhere bool
-	Where     *Expr
+	Pattern  *Pattern
+	Optional bool
+	Where    *Expr
 }
 
 func (n *MatchClause) Accept(v Visitor) (Node, bool) {
@@ -50,7 +49,7 @@ func (n *MatchClause) Accept(v Visitor) (Node, bool) {
 	}
 	n = newNode.(*MatchClause)
 	n.Pattern.Accept(v)
-	if n.WithWhere {
+	if n.Where != nil {
 		n.Where.Accept(v)
 	}
 	return v.Leave(n)
