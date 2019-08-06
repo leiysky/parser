@@ -211,7 +211,11 @@ nodeLabels : nodeLabel ( SP? nodeLabel )* ;
 
 nodeLabel : ':' SP? labelName ;
 
-rangeLiteral : '*' SP? ( integerLiteral SP? )? ( '..' SP? ( integerLiteral SP? )? )? ;
+rangeLiteral : '*' SP? ( minHops SP? )? ( '..' SP? ( maxHops SP? )? )? ;
+
+minHops: integerLiteral;
+
+maxHops: integerLiteral;
 
 labelName : schemaName ;
 

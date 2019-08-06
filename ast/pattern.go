@@ -127,8 +127,6 @@ type RelationshipDetail struct {
 
 	Variable          *VariableNode
 	RelationshipTypes []*SchemaNameNode
-	// Range[0] represents lower bound
-	// Range[1] represents upper bound
 	// -1 represent wildcard
 	// [1, 2] means the Relationship will be matched for 1 - 2 times
 	// [-1, 2] means will be matched for 0 - 2 times
@@ -140,7 +138,8 @@ type RelationshipDetail struct {
 	// - [*1..]
 	// - [*1..2]
 	// - [*..2]
-	Range      [2]int
+	MinHops    int
+	MaxHops    int
 	Properties *Properties
 }
 

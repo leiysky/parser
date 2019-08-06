@@ -2,9 +2,7 @@
 
 package parser // Cypher
 
-import (
-	"github.com/antlr/antlr4/runtime/Go/antlr"
-)
+import "github.com/antlr/antlr4/runtime/Go/antlr"
 
 type BaseCypherVisitor struct {
 	*antlr.BaseParseTreeVisitor
@@ -195,6 +193,14 @@ func (v *BaseCypherVisitor) VisitNodeLabel(ctx *NodeLabelContext) interface{} {
 }
 
 func (v *BaseCypherVisitor) VisitRangeLiteral(ctx *RangeLiteralContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseCypherVisitor) VisitMinHops(ctx *MinHopsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseCypherVisitor) VisitMaxHops(ctx *MaxHopsContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

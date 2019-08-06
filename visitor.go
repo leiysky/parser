@@ -507,53 +507,20 @@ func (v *convertVisitor) VisitRelationshipDetail(ctx *RelationshipDetailContext)
 
 	if ctx.RangeLiteral() != nil {
 		rangeLiteral := ctx.RangeLiteral().Accept(v).(*RangeLiteralContext)
-		if len(ctx.GetTokens(12)) == 0 {
-			// 12 represents '..', see Cypher.tokens
-			// means there is no upper bound
-			if len(rangeLiteral.AllIntegerLiteral()) == 0 {
-				// condition: [*]
-				// means there is no lower bound and no upper bound, so we make it [-1, -1]
-				relationshipDetail.Range = [2]int{-1, -1}
-			} else {
-				// condition: [*n]
-				// means there is lower bound but no upper bound, so we make it [n, n] (n represents lower bound)
-				lower := rangeLiteral.AllIntegerLiteral()[0].Accept(v).(int)
-				relationshipDetail.Range = [2]int{lower, lower}
-			}
+		if rangeLiteral.MinHops() != nil {
+			relationshipDetail.MinHops = rangeLiteral.MinHops().Accept(v).(*MinHopsContext).IntegerLiteral().Accept(v).(int)
 		} else {
-			// means there is upper bound
-			// there are 3 conditions: [*m..n] [*m..] [*..n]
-			if len(rangeLiteral.AllIntegerLiteral()) == 2 {
-				// condition: [*m..n]
-				// means has both lower and upper bound, so we make it [m, n]
-				lower := rangeLiteral.AllIntegerLiteral()[0].Accept(v).(int)
-				upper := rangeLiteral.AllIntegerLiteral()[1].Accept(v).(int)
-				relationshipDetail.Range = [2]int{lower, upper}
-			} else if len(rangeLiteral.AllIntegerLiteral()) == 1 {
-				// conditions: [*m..] [*..n]
-				bound := rangeLiteral.AllIntegerLiteral()[0].Accept(v).(int)
-				var isLower bool
-				children := rangeLiteral.GetChildren()
-				// if IntegerLiteral appears before '..', then we can know it's [*m..], other wise it's [*..n]
-				for _, child := range children {
-					switch child.GetPayload().(type) {
-					case *IntegerLiteralContext:
-						isLower = true
-						goto Outloop
-					case antlr.TerminalNode:
-						goto Outloop
-					}
-				}
-			Outloop:
-
-				if isLower {
-					relationshipDetail.Range = [2]int{bound, -1}
-				} else {
-					relationshipDetail.Range = [2]int{0, bound}
-				}
-			}
+			relationshipDetail.MinHops = -1
 		}
-	} // Parse RangeLiteral
+		if rangeLiteral.MaxHops() != nil {
+			relationshipDetail.MaxHops = rangeLiteral.MaxHops().Accept(v).(*MaxHopsContext).IntegerLiteral().Accept(v).(int)
+		} else {
+			relationshipDetail.MaxHops = -1
+		}
+	} else {
+		relationshipDetail.MinHops = 1
+		relationshipDetail.MaxHops = 1
+	}
 
 	if ctx.Properties() != nil {
 		relationshipDetail.Properties = ctx.Properties().Accept(v).(*ast.Properties)
@@ -562,6 +529,14 @@ func (v *convertVisitor) VisitRelationshipDetail(ctx *RelationshipDetailContext)
 }
 
 func (v *convertVisitor) VisitRangeLiteral(ctx *RangeLiteralContext) interface{} {
+	return ctx
+}
+
+func (v *convertVisitor) VisitMinHops(ctx *MinHopsContext) interface{} {
+	return ctx
+}
+
+func (v *convertVisitor) VisitMaxHops(ctx *MaxHopsContext) interface{} {
 	return ctx
 }
 

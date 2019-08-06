@@ -149,6 +149,12 @@ type CypherVisitor interface {
 	// Visit a parse tree produced by CypherParser#rangeLiteral.
 	VisitRangeLiteral(ctx *RangeLiteralContext) interface{}
 
+	// Visit a parse tree produced by CypherParser#minHops.
+	VisitMinHops(ctx *MinHopsContext) interface{}
+
+	// Visit a parse tree produced by CypherParser#maxHops.
+	VisitMaxHops(ctx *MaxHopsContext) interface{}
+
 	// Visit a parse tree produced by CypherParser#labelName.
 	VisitLabelName(ctx *LabelNameContext) interface{}
 
