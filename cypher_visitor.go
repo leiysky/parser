@@ -32,6 +32,9 @@ type CypherVisitor interface {
 	// Visit a parse tree produced by CypherParser#multiPartQuery.
 	VisitMultiPartQuery(ctx *MultiPartQueryContext) interface{}
 
+	// Visit a parse tree produced by CypherParser#multiPartQueryPartial.
+	VisitMultiPartQueryPartial(ctx *MultiPartQueryPartialContext) interface{}
+
 	// Visit a parse tree produced by CypherParser#updatingClause.
 	VisitUpdatingClause(ctx *UpdatingClauseContext) interface{}
 

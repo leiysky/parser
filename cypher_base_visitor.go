@@ -40,6 +40,10 @@ func (v *BaseCypherVisitor) VisitMultiPartQuery(ctx *MultiPartQueryContext) inte
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseCypherVisitor) VisitMultiPartQueryPartial(ctx *MultiPartQueryPartialContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseCypherVisitor) VisitUpdatingClause(ctx *UpdatingClauseContext) interface{} {
 	return v.VisitChildren(ctx)
 }

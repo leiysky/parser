@@ -43,7 +43,7 @@ func (v *convertVisitor) VisitCypher(ctx *CypherContext) interface{} {
 	switch v.parser.RuleNames[i.GetRuleIndex()] {
 	case "regularQuery":
 		node.Type = ast.CypherStmtQuery
-		node.Query = query.RegularQuery().Accept(v).(*ast.RegularQueryStmt)
+		node.Query = query.RegularQuery().Accept(v).(*ast.QueryStmt)
 
 	case "standaloneCall":
 		node.Type = ast.CypherStmtStandaloneCall
@@ -61,15 +61,13 @@ func (v *convertVisitor) VisitQuery(ctx *QueryContext) interface{} {
 }
 
 func (v *convertVisitor) VisitRegularQuery(ctx *RegularQueryContext) interface{} {
-	regularQuery := &ast.RegularQueryStmt{}
-	regularQuery.SingleQuery = ctx.SingleQuery().Accept(v).(*ast.SingleQueryStmt)
-
-	var unionClauses []*ast.UnionClause
+	query := &ast.QueryStmt{}
+	clauses := ctx.SingleQuery().Accept(v).([]ast.StmtNode)
 	for _, union := range ctx.AllUnionClause() {
-		unionClauses = append(unionClauses, union.Accept(v).(*ast.UnionClause))
+		clauses = append(clauses, union.Accept(v).(*ast.UnionClause))
 	}
-	regularQuery.Unions = unionClauses
-	return regularQuery
+	query.Clauses = clauses
+	return query
 }
 
 func (v *convertVisitor) VisitUnionClause(ctx *UnionClauseContext) interface{} {
@@ -77,67 +75,55 @@ func (v *convertVisitor) VisitUnionClause(ctx *UnionClauseContext) interface{} {
 	if ctx.ALL() != nil {
 		unionClause.All = true
 	}
-	unionClause.SingleQuery = ctx.SingleQuery().Accept(v).(*ast.SingleQueryStmt)
+	unionClause.Clauses = ctx.SingleQuery().Accept(v).([]ast.StmtNode)
 	return unionClause
 }
 
 func (v *convertVisitor) VisitSingleQuery(ctx *SingleQueryContext) interface{} {
-	singleQuery := &ast.SingleQueryStmt{}
+	var clauses []ast.StmtNode
 	if ctx.SinglePartQuery() != nil {
-		singleQuery.Type = ast.SingleQueryStmtSinglePart
-		singleQuery.SinglePart = ctx.SinglePartQuery().Accept(v).(*ast.SinglePartQueryStmt)
+		ss := ctx.SinglePartQuery().Accept(v).([]ast.StmtNode)
+		clauses = append(clauses, ss...)
 	} else if ctx.MultiPartQuery() != nil {
-		singleQuery.Type = ast.SingleQueryStmtMultiPart
-		singleQuery.MultiPart = ctx.MultiPartQuery().Accept(v).(*ast.MultiPartQueryStmt)
+		ss := ctx.MultiPartQuery().Accept(v).([]ast.StmtNode)
+		clauses = append(clauses, ss...)
 	}
-	return singleQuery
+	return clauses
 }
 
 func (v *convertVisitor) VisitSinglePartQuery(ctx *SinglePartQueryContext) interface{} {
-	singlePartQuery := &ast.SinglePartQueryStmt{}
-	var readingClauses []*ast.ReadingClause
+	var clauses []ast.StmtNode
 	for _, c := range ctx.AllReadingClause() {
-		readingClauses = append(readingClauses, c.Accept(v).(*ast.ReadingClause))
+		clauses = append(clauses, c.Accept(v).(ast.StmtNode))
 	}
-	var updatingClauses []*ast.UpdatingClause
 	for _, c := range ctx.AllUpdatingClause() {
-		updatingClauses = append(updatingClauses, c.Accept(v).(*ast.UpdatingClause))
+		clauses = append(clauses, c.Accept(v).(ast.StmtNode))
 	}
-	singlePartQuery.ReadingClauses = readingClauses
-	singlePartQuery.UpdatingClauses = updatingClauses
 	if ctx.ReturnClause() != nil {
-		singlePartQuery.Return = ctx.ReturnClause().Accept(v).(*ast.ReturnClause)
+		clauses = append(clauses, ctx.ReturnClause().Accept(v).(ast.StmtNode))
 	}
-	return singlePartQuery
+	return clauses
 }
 
 func (v *convertVisitor) VisitMultiPartQuery(ctx *MultiPartQueryContext) interface{} {
-	multiPartQuery := &ast.MultiPartQueryStmt{}
-	var parts []*ast.MultiPartQueryPartial
-	var part *ast.MultiPartQueryPartial = &ast.MultiPartQueryPartial{}
-	var readingCount int
-	var updatingCount int
-	var withCount int
-	for _, child := range ctx.GetChildren() {
-		if n, ok := child.GetPayload().(antlr.RuleContext); ok {
-			switch v.parser.RuleNames[n.GetRuleIndex()] {
-			case "readingClause":
-				part.Readings = append(part.Readings, ctx.ReadingClause(readingCount).Accept(v).(*ast.ReadingClause))
-				readingCount++
-			case "updatingClause":
-				part.Updatings = append(part.Updatings, ctx.UpdatingClause(updatingCount).Accept(v).(*ast.UpdatingClause))
-				updatingCount++
-			case "withClause":
-				part.With = ctx.WithClause(withCount).Accept(v).(*ast.WithClause)
-				withCount++
-				parts = append(parts, part)
-				part = &ast.MultiPartQueryPartial{}
-			}
-		}
+	var clauses []ast.StmtNode
+	for _, p := range ctx.AllMultiPartQueryPartial() {
+		clauses = append(clauses, p.Accept(v).([]ast.StmtNode)...)
 	}
-	multiPartQuery.MultiPart = parts
-	multiPartQuery.SinglePart = ctx.SinglePartQuery().Accept(v).(*ast.SinglePartQueryStmt)
-	return multiPartQuery
+	clauses = append(clauses, ctx.SinglePartQuery().Accept(v).([]ast.StmtNode)...)
+	return clauses
+}
+
+func (v *convertVisitor) VisitMultiPartQueryPartial(ctx *MultiPartQueryPartialContext) interface{} {
+	var clauses []ast.StmtNode
+	for _, r := range ctx.AllReadingClause() {
+		clauses = append(clauses, r.Accept(v).(ast.StmtNode))
+	}
+	for _, u := range ctx.AllUpdatingClause() {
+		clauses = append(clauses, u.Accept(v).(ast.StmtNode))
+	}
+	clauses = append(clauses, ctx.WithClause().Accept(v).(ast.StmtNode))
+	return clauses
 }
 
 func (v *convertVisitor) VisitWithClause(ctx *WithClauseContext) interface{} {
@@ -153,25 +139,13 @@ func (v *convertVisitor) VisitWithClause(ctx *WithClauseContext) interface{} {
 }
 
 func (v *convertVisitor) VisitReadingClause(ctx *ReadingClauseContext) interface{} {
-	readingClause := &ast.ReadingClause{}
-
-	var i antlr.RuleContext
+	var n ast.StmtNode
 	if ctx.MatchClause() != nil {
-		i = ctx.MatchClause()
+		n = ctx.MatchClause().Accept(v).(*ast.MatchClause)
 	} else if ctx.UnwindClause() != nil {
-		i = ctx.UnwindClause()
+		n = ctx.UnwindClause().Accept(v).(*ast.UnwindClause)
 	}
-
-	switch v.parser.RuleNames[i.GetRuleIndex()] {
-	case "matchClause":
-		readingClause.Type = ast.ReadingClauseMatch
-		readingClause.Match = ctx.MatchClause().Accept(v).(*ast.MatchClause)
-
-	case "unwindClause":
-		readingClause.Type = ast.ReadingClauseUnwind
-		readingClause.Unwind = ctx.UnwindClause().Accept(v).(*ast.UnwindClause)
-	}
-	return readingClause
+	return n
 }
 
 func (v *convertVisitor) VisitMatchClause(ctx *MatchClauseContext) interface{} {
@@ -194,26 +168,19 @@ func (v *convertVisitor) VisitUnwindClause(ctx *UnwindClauseContext) interface{}
 }
 
 func (v *convertVisitor) VisitUpdatingClause(ctx *UpdatingClauseContext) interface{} {
-	updatingClause := &ast.UpdatingClause{}
-
-	var i antlr.RuleContext
-	if i = ctx.CreateClause(); i != nil {
-		updatingClause.Type = ast.UpdatingClauseCreate
-		updatingClause.Create = ctx.CreateClause().Accept(v).(*ast.CreateClause)
-	} else if i = ctx.MergeClause(); i != nil {
-		updatingClause.Type = ast.UpdatingClauseMerge
-		updatingClause.Merge = ctx.MergeClause().Accept(v).(*ast.MergeClause)
-	} else if i = ctx.SetClause(); i != nil {
-		updatingClause.Type = ast.UpdatingClauseSet
-		updatingClause.Set = ctx.SetClause().Accept(v).(*ast.SetClause)
-	} else if i = ctx.DeleteClause(); i != nil {
-		updatingClause.Type = ast.UpdatingClauseDelete
-		updatingClause.Delete = ctx.DeleteClause().Accept(v).(*ast.DeleteClause)
-	} else if i = ctx.RemoveClause(); i != nil {
-		updatingClause.Type = ast.UpdatingClauseRemove
-		updatingClause.Remove = ctx.RemoveClause().Accept(v).(*ast.RemoveClause)
+	var n ast.StmtNode
+	if ctx.CreateClause() != nil {
+		n = ctx.CreateClause().Accept(v).(*ast.CreateClause)
+	} else if ctx.MergeClause() != nil {
+		n = ctx.MergeClause().Accept(v).(*ast.MergeClause)
+	} else if ctx.SetClause() != nil {
+		n = ctx.SetClause().Accept(v).(*ast.SetClause)
+	} else if ctx.DeleteClause() != nil {
+		n = ctx.DeleteClause().Accept(v).(*ast.DeleteClause)
+	} else if ctx.RemoveClause() != nil {
+		n = ctx.RemoveClause().Accept(v).(*ast.RemoveClause)
 	}
-	return updatingClause
+	return n
 }
 
 func (v *convertVisitor) VisitCreateClause(ctx *CreateClauseContext) interface{} {
