@@ -53,7 +53,9 @@ singlePartQuery : ( ( readingClause SP? )* returnClause )
                    | ( ( readingClause SP? )* updatingClause ( SP? updatingClause )* ( SP? returnClause )? )
                    ;
 
-multiPartQuery : ( ( readingClause SP? )* ( updatingClause SP? )* withClause SP? )+ singlePartQuery ;
+multiPartQuery : multiPartQueryPartial+ singlePartQuery ;
+
+multiPartQueryPartial : ( ( readingClause SP? )* ( updatingClause SP? )* withClause SP? );
 
 updatingClause : createClause
                   | mergeClause
