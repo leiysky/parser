@@ -33,7 +33,7 @@ func (n *CypherStmt) Accept(v Visitor) (Node, bool) {
 type QueryStmt struct {
 	baseStmt
 
-	Clauses []StmtNode
+	Clauses []Stmt
 }
 
 func (n *QueryStmt) Accept(v Visitor) (Node, bool) {
@@ -52,7 +52,7 @@ type UnionClause struct {
 	baseStmt
 
 	All     bool
-	Clauses []StmtNode
+	Clauses []Stmt
 }
 
 func (n *UnionClause) Accept(v Visitor) (Node, bool) {
@@ -174,7 +174,7 @@ type WithClause struct {
 
 	Distinct   bool
 	ReturnBody *ReturnBody
-	Where      *Expr
+	Where      Expr
 }
 
 func (n *WithClause) Accept(v Visitor) (Node, bool) {

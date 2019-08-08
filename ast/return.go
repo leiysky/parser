@@ -5,8 +5,8 @@ type ReturnBody struct {
 
 	ReturnItems []*ReturnItem
 	OrderBy     *OrderClause
-	Skip        *Expr
-	Limit       *Expr
+	Skip        Expr
+	Limit       Expr
 }
 
 func (n *ReturnBody) Accept(v Visitor) (Node, bool) {
@@ -33,7 +33,7 @@ func (n *ReturnBody) Accept(v Visitor) (Node, bool) {
 type ReturnItem struct {
 	baseStmt
 
-	Expr     *Expr
+	Expr     Expr
 	As       bool
 	Variable *VariableNode
 }
@@ -80,7 +80,7 @@ type SortItem struct {
 	baseStmt
 
 	Type SortType
-	Expr *Expr
+	Expr Expr
 }
 
 func (n *SortItem) Accept(v Visitor) (Node, bool) {

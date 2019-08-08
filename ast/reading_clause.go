@@ -39,7 +39,7 @@ type MatchClause struct {
 
 	Pattern  *Pattern
 	Optional bool
-	Where    *Expr
+	Where    Expr
 }
 
 func (n *MatchClause) Accept(v Visitor) (Node, bool) {
@@ -58,7 +58,7 @@ func (n *MatchClause) Accept(v Visitor) (Node, bool) {
 type UnwindClause struct {
 	baseStmt
 
-	Expr     *Expr
+	Expr     Expr
 	Variable *SymbolicNameNode
 }
 

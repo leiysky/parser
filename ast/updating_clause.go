@@ -136,7 +136,7 @@ type SetItemStmt struct {
 	Type     SetItemType
 	Property *PropertyExpr
 	Variable *VariableNode
-	Expr     *Expr
+	Expr     Expr
 	Labels   []*NodeLabelNode
 }
 
@@ -168,7 +168,7 @@ type DeleteClause struct {
 	baseStmt
 
 	Detach bool
-	Exprs  []*Expr
+	Exprs  []Expr
 }
 
 func (n *DeleteClause) Accept(v Visitor) (Node, bool) {

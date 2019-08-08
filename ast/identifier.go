@@ -218,7 +218,7 @@ type MapLiteral struct {
 	baseNode
 
 	PropertyKeys []*SchemaNameNode
-	Exprs        []*Expr
+	Exprs        []Expr
 }
 
 func (n *MapLiteral) Accept(v Visitor) (Node, bool) {
@@ -239,7 +239,7 @@ func (n *MapLiteral) Accept(v Visitor) (Node, bool) {
 type ListLiteral struct {
 	baseNode
 
-	Exprs []*Expr
+	Exprs []Expr
 }
 
 func (n *ListLiteral) Accept(v Visitor) (Node, bool) {

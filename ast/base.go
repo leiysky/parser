@@ -17,24 +17,26 @@ type baseStmt struct {
 	baseNode
 }
 
-func (n *baseStmt) statement() {}
+func (n *baseStmt) statementNode() {}
 
 type baseExpr struct {
 	baseNode
 }
 
-type Expr struct {
+func (n *baseExpr) exprNode() {}
+
+type Expression struct {
 	baseExpr
 
 	OrExpr *OrExpr
 }
 
-func (n *Expr) Accept(v Visitor) (Node, bool) {
+func (n *Expression) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
 		return v.Leave(n)
 	}
-	n = newNode.(*Expr)
+	n = newNode.(*Expression)
 	n.OrExpr.Accept(v)
 	return v.Leave(n)
 }

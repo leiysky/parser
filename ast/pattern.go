@@ -196,8 +196,8 @@ type PatternComprehension struct {
 
 	Variable       *VariableNode
 	PatternElement *PatternElement
-	Where          *Expr
-	Expr           *Expr
+	Where          Expr
+	Expr           Expr
 }
 
 func (n *PatternComprehension) Accept(v Visitor) (Node, bool) {

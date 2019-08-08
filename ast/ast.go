@@ -6,13 +6,14 @@ type Node interface {
 	SetText(text string)
 }
 
-type StmtNode interface {
+type Stmt interface {
 	Node
-	statement()
+	statementNode()
 }
 
-type ExprNode interface {
+type Expr interface {
 	Node
+	exprNode()
 }
 
 type Visitor interface {

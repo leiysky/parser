@@ -62,7 +62,7 @@ func (v *convertVisitor) VisitQuery(ctx *QueryContext) interface{} {
 
 func (v *convertVisitor) VisitRegularQuery(ctx *RegularQueryContext) interface{} {
 	query := &ast.QueryStmt{}
-	clauses := ctx.SingleQuery().Accept(v).([]ast.StmtNode)
+	clauses := ctx.SingleQuery().Accept(v).([]ast.Stmt)
 	for _, union := range ctx.AllUnionClause() {
 		clauses = append(clauses, union.Accept(v).(*ast.UnionClause))
 	}
@@ -75,54 +75,54 @@ func (v *convertVisitor) VisitUnionClause(ctx *UnionClauseContext) interface{} {
 	if ctx.ALL() != nil {
 		unionClause.All = true
 	}
-	unionClause.Clauses = ctx.SingleQuery().Accept(v).([]ast.StmtNode)
+	unionClause.Clauses = ctx.SingleQuery().Accept(v).([]ast.Stmt)
 	return unionClause
 }
 
 func (v *convertVisitor) VisitSingleQuery(ctx *SingleQueryContext) interface{} {
-	var clauses []ast.StmtNode
+	var clauses []ast.Stmt
 	if ctx.SinglePartQuery() != nil {
-		ss := ctx.SinglePartQuery().Accept(v).([]ast.StmtNode)
+		ss := ctx.SinglePartQuery().Accept(v).([]ast.Stmt)
 		clauses = append(clauses, ss...)
 	} else if ctx.MultiPartQuery() != nil {
-		ss := ctx.MultiPartQuery().Accept(v).([]ast.StmtNode)
+		ss := ctx.MultiPartQuery().Accept(v).([]ast.Stmt)
 		clauses = append(clauses, ss...)
 	}
 	return clauses
 }
 
 func (v *convertVisitor) VisitSinglePartQuery(ctx *SinglePartQueryContext) interface{} {
-	var clauses []ast.StmtNode
+	var clauses []ast.Stmt
 	for _, c := range ctx.AllReadingClause() {
-		clauses = append(clauses, c.Accept(v).(ast.StmtNode))
+		clauses = append(clauses, c.Accept(v).(ast.Stmt))
 	}
 	for _, c := range ctx.AllUpdatingClause() {
-		clauses = append(clauses, c.Accept(v).(ast.StmtNode))
+		clauses = append(clauses, c.Accept(v).(ast.Stmt))
 	}
 	if ctx.ReturnClause() != nil {
-		clauses = append(clauses, ctx.ReturnClause().Accept(v).(ast.StmtNode))
+		clauses = append(clauses, ctx.ReturnClause().Accept(v).(ast.Stmt))
 	}
 	return clauses
 }
 
 func (v *convertVisitor) VisitMultiPartQuery(ctx *MultiPartQueryContext) interface{} {
-	var clauses []ast.StmtNode
+	var clauses []ast.Stmt
 	for _, p := range ctx.AllMultiPartQueryPartial() {
-		clauses = append(clauses, p.Accept(v).([]ast.StmtNode)...)
+		clauses = append(clauses, p.Accept(v).([]ast.Stmt)...)
 	}
-	clauses = append(clauses, ctx.SinglePartQuery().Accept(v).([]ast.StmtNode)...)
+	clauses = append(clauses, ctx.SinglePartQuery().Accept(v).([]ast.Stmt)...)
 	return clauses
 }
 
 func (v *convertVisitor) VisitMultiPartQueryPartial(ctx *MultiPartQueryPartialContext) interface{} {
-	var clauses []ast.StmtNode
+	var clauses []ast.Stmt
 	for _, r := range ctx.AllReadingClause() {
-		clauses = append(clauses, r.Accept(v).(ast.StmtNode))
+		clauses = append(clauses, r.Accept(v).(ast.Stmt))
 	}
 	for _, u := range ctx.AllUpdatingClause() {
-		clauses = append(clauses, u.Accept(v).(ast.StmtNode))
+		clauses = append(clauses, u.Accept(v).(ast.Stmt))
 	}
-	clauses = append(clauses, ctx.WithClause().Accept(v).(ast.StmtNode))
+	clauses = append(clauses, ctx.WithClause().Accept(v).(ast.Stmt))
 	return clauses
 }
 
@@ -133,13 +133,13 @@ func (v *convertVisitor) VisitWithClause(ctx *WithClauseContext) interface{} {
 	}
 	withClause.ReturnBody = ctx.ReturnBody().Accept(v).(*ast.ReturnBody)
 	if ctx.WhereClause() != nil {
-		withClause.Where = ctx.WhereClause().Accept(v).(*ast.Expr)
+		withClause.Where = ctx.WhereClause().Accept(v).(ast.Expr)
 	}
 	return withClause
 }
 
 func (v *convertVisitor) VisitReadingClause(ctx *ReadingClauseContext) interface{} {
-	var n ast.StmtNode
+	var n ast.Stmt
 	if ctx.MatchClause() != nil {
 		n = ctx.MatchClause().Accept(v).(*ast.MatchClause)
 	} else if ctx.UnwindClause() != nil {
@@ -154,7 +154,7 @@ func (v *convertVisitor) VisitMatchClause(ctx *MatchClauseContext) interface{} {
 		match.Optional = true
 	}
 	if ctx.WhereClause() != nil {
-		match.Where = ctx.WhereClause().Accept(v).(*ast.Expr)
+		match.Where = ctx.WhereClause().Accept(v).(ast.Expr)
 	}
 	match.Pattern = ctx.Pattern().Accept(v).(*ast.Pattern)
 	return match
@@ -162,13 +162,13 @@ func (v *convertVisitor) VisitMatchClause(ctx *MatchClauseContext) interface{} {
 
 func (v *convertVisitor) VisitUnwindClause(ctx *UnwindClauseContext) interface{} {
 	unwind := &ast.UnwindClause{}
-	unwind.Expr = ctx.Expr().Accept(v).(*ast.Expr)
+	unwind.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	unwind.Variable = ctx.Variable().Accept(v).(*ast.SymbolicNameNode)
 	return unwind
 }
 
 func (v *convertVisitor) VisitUpdatingClause(ctx *UpdatingClauseContext) interface{} {
-	var n ast.StmtNode
+	var n ast.Stmt
 	if ctx.CreateClause() != nil {
 		n = ctx.CreateClause().Accept(v).(*ast.CreateClause)
 	} else if ctx.MergeClause() != nil {
@@ -209,12 +209,12 @@ func (v *convertVisitor) VisitSetItem(ctx *SetItemContext) interface{} {
 		// 3 presents '=' token, see Cypher.tokens
 		setItem.Type = ast.SetItemVariableAssignment
 		setItem.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
-		setItem.Expr = ctx.Expr().Accept(v).(*ast.Expr)
+		setItem.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	} else if len(ctx.GetTokens(4)) > 0 {
 		// 4 presents '+=' token, see Cypher.tokens
 		setItem.Type = ast.SetItemVariableIncrement
 		setItem.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
-		setItem.Expr = ctx.Expr().Accept(v).(*ast.Expr)
+		setItem.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	} else if allLabel := ctx.NodeLabels().Accept(v).(*NodeLabelsContext).AllNodeLabel(); len(allLabel) > 0 {
 		var labels []*ast.NodeLabelNode
 		for _, label := range allLabel {
@@ -232,9 +232,9 @@ func (v *convertVisitor) VisitDeleteClause(ctx *DeleteClauseContext) interface{}
 	if ctx.DETACH() != nil {
 		deleteClause.Detach = true
 	}
-	var exprs []*ast.Expr
+	var exprs []ast.Expr
 	for _, expr := range ctx.AllExpr() {
-		exprs = append(exprs, expr.Accept(v).(*ast.Expr))
+		exprs = append(exprs, expr.Accept(v).(ast.Expr))
 	}
 	deleteClause.Exprs = exprs
 	return deleteClause
@@ -290,7 +290,7 @@ func (v *convertVisitor) VisitMergeAction(ctx *MergeActionContext) interface{} {
 }
 
 func (v *convertVisitor) VisitWhereClause(ctx *WhereClauseContext) interface{} {
-	where := ctx.Expr().Accept(v).(*ast.Expr)
+	where := ctx.Expr().Accept(v).(ast.Expr)
 	return where
 }
 
@@ -547,10 +547,10 @@ func (v *convertVisitor) VisitReturnBody(ctx *ReturnBodyContext) interface{} {
 		returnBody.OrderBy = ctx.OrderClause().Accept(v).(*ast.OrderClause)
 	}
 	if ctx.SkipClause() != nil {
-		returnBody.Skip = ctx.SkipClause().(*SkipClauseContext).Expr().Accept(v).(*ast.Expr)
+		returnBody.Skip = ctx.SkipClause().(*SkipClauseContext).Expr().Accept(v).(ast.Expr)
 	}
 	if ctx.LimitClause() != nil {
-		returnBody.Limit = ctx.LimitClause().(*LimitClauseContext).Expr().Accept(v).(*ast.Expr)
+		returnBody.Limit = ctx.LimitClause().(*LimitClauseContext).Expr().Accept(v).(ast.Expr)
 	}
 	return returnBody
 }
@@ -561,7 +561,7 @@ func (v *convertVisitor) VisitReturnItems(ctx *ReturnItemsContext) interface{} {
 
 func (v *convertVisitor) VisitReturnItem(ctx *ReturnItemContext) interface{} {
 	returnItem := &ast.ReturnItem{}
-	returnItem.Expr = ctx.Expr().Accept(v).(*ast.Expr)
+	returnItem.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	if ctx.AS() != nil {
 		returnItem.As = true
 		returnItem.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
@@ -588,7 +588,7 @@ func (v *convertVisitor) VisitLimitClause(ctx *LimitClauseContext) interface{} {
 
 func (v *convertVisitor) VisitSortItem(ctx *SortItemContext) interface{} {
 	sortItem := &ast.SortItem{}
-	sortItem.Expr = ctx.Expr().Accept(v).(*ast.Expr)
+	sortItem.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	if ctx.ASC() != nil || ctx.ASCENDING() != nil {
 		sortItem.Type = ast.SortAscending
 	} else if ctx.DESC() != nil || ctx.DESCENDING() != nil {
@@ -598,8 +598,7 @@ func (v *convertVisitor) VisitSortItem(ctx *SortItemContext) interface{} {
 }
 
 func (v *convertVisitor) VisitExpr(ctx *ExprContext) interface{} {
-	expr := &ast.Expr{}
-	expr.OrExpr = ctx.OrExpr().Accept(v).(*ast.OrExpr)
+	expr := ctx.OrExpr().Accept(v).(ast.Expr)
 	return expr
 }
 
@@ -762,10 +761,10 @@ func (v *convertVisitor) VisitListOperatorExpr(ctx *ListOperatorExprContext) int
 	if ctx.PropertyOrLabelsExpr() != nil {
 		listOperatorExpr.InExpr = ctx.PropertyOrLabelsExpr().Accept(v).(*ast.PropertyOrLabelsExpr)
 	} else if len(ctx.GetTokens(12)) > 0 {
-		listOperatorExpr.RangeExprs[0] = ctx.Expr(0).Accept(v).(*ast.Expr)
-		listOperatorExpr.RangeExprs[1] = ctx.Expr(1).Accept(v).(*ast.Expr)
+		listOperatorExpr.RangeExprs[0] = ctx.Expr(0).Accept(v).(ast.Expr)
+		listOperatorExpr.RangeExprs[1] = ctx.Expr(1).Accept(v).(ast.Expr)
 	} else if len(ctx.GetTokens(12)) == 0 {
-		expr := ctx.Expr(0).Accept(v).(*ast.Expr)
+		expr := ctx.Expr(0).Accept(v).(ast.Expr)
 		listOperatorExpr.SingleExpr = expr
 	}
 	return listOperatorExpr
@@ -829,21 +828,21 @@ func (v *convertVisitor) VisitCaseExpr(ctx *CaseExprContext) interface{} {
 	if ctx.ELSE() != nil {
 		// means there are at least 1 Expr
 		if len(ctx.AllExpr()) > 1 {
-			caseExpr.Expr = ctx.Expr(0).Accept(v).(*ast.Expr)
-			caseExpr.Else = ctx.Expr(1).Accept(v).(*ast.Expr)
+			caseExpr.Expr = ctx.Expr(0).Accept(v).(ast.Expr)
+			caseExpr.Else = ctx.Expr(1).Accept(v).(ast.Expr)
 		} else if len(ctx.AllExpr()) == 1 {
-			caseExpr.Expr = ctx.Expr(0).Accept(v).(*ast.Expr)
+			caseExpr.Expr = ctx.Expr(0).Accept(v).(ast.Expr)
 		}
 	} else if len(ctx.AllExpr()) > 0 {
-		caseExpr.Expr = ctx.Expr(0).Accept(v).(*ast.Expr)
+		caseExpr.Expr = ctx.Expr(0).Accept(v).(ast.Expr)
 	}
 	return caseExpr
 }
 
 func (v *convertVisitor) VisitCaseAlternatives(ctx *CaseAlternativesContext) interface{} {
 	caseAlt := &ast.CaseAlt{}
-	caseAlt.When = ctx.Expr(0).Accept(v).(*ast.Expr)
-	caseAlt.Then = ctx.Expr(1).Accept(v).(*ast.Expr)
+	caseAlt.When = ctx.Expr(0).Accept(v).(ast.Expr)
+	caseAlt.Then = ctx.Expr(1).Accept(v).(ast.Expr)
 	return caseAlt
 }
 
@@ -883,7 +882,7 @@ func (v *convertVisitor) VisitAtom(ctx *AtomContext) interface{} {
 		atom.PatternElement = ctx.RelationshipsPattern().Accept(v).(*ast.PatternElement)
 	} else if ctx.ParenthesizedExpr() != nil {
 		atom.Type = ast.AtomParenthesizedExpr
-		atom.ParenthesizedExpr = ctx.ParenthesizedExpr().Accept(v).(*ParenthesizedExprContext).Expr().Accept(v).(*ast.Expr)
+		atom.ParenthesizedExpr = ctx.ParenthesizedExpr().Accept(v).(*ParenthesizedExprContext).Expr().Accept(v).(ast.Expr)
 	} else if ctx.FunctionInvocation() != nil {
 		// TODO
 		panic("FunctionInvocation not support now")
@@ -918,9 +917,9 @@ func (v *convertVisitor) VisitFilterExpr(ctx *FilterExprContext) interface{} {
 	filterExpr := &ast.FilterExpr{}
 	idInColl := ctx.IdInColl().Accept(v).(*IdInCollContext)
 	filterExpr.Variable = idInColl.Variable().Accept(v).(*ast.VariableNode)
-	filterExpr.In = idInColl.Expr().Accept(v).(*ast.Expr)
+	filterExpr.In = idInColl.Expr().Accept(v).(ast.Expr)
 	if ctx.WhereClause() != nil {
-		filterExpr.Where = ctx.WhereClause().Accept(v).(*ast.Expr)
+		filterExpr.Where = ctx.WhereClause().Accept(v).(ast.Expr)
 	}
 	return filterExpr
 }
@@ -933,7 +932,7 @@ func (v *convertVisitor) VisitListComprehension(ctx *ListComprehensionContext) i
 	listComprehension := &ast.ListComprehension{}
 	listComprehension.FilterExpr = ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
 	if ctx.Expr() != nil {
-		listComprehension.Expr = ctx.Expr().Accept(v).(*ast.Expr)
+		listComprehension.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	}
 	return listComprehension
 }
@@ -945,9 +944,9 @@ func (v *convertVisitor) VisitPatternComprehension(ctx *PatternComprehensionCont
 	}
 	patternComprehension.PatternElement = ctx.RelationshipsPattern().Accept(v).(*ast.PatternElement)
 	if ctx.WHERE() != nil {
-		patternComprehension.Where = ctx.Expr(0).Accept(v).(*ast.Expr)
+		patternComprehension.Where = ctx.Expr(0).Accept(v).(ast.Expr)
 	}
-	patternComprehension.Expr = ctx.AllExpr()[len(ctx.AllExpr())-1].Accept(v).(*ast.Expr)
+	patternComprehension.Expr = ctx.AllExpr()[len(ctx.AllExpr())-1].Accept(v).(ast.Expr)
 	return patternComprehension
 }
 
@@ -999,10 +998,10 @@ func (v *convertVisitor) VisitBooleanLiteral(ctx *BooleanLiteralContext) interfa
 func (v *convertVisitor) VisitMapLiteral(ctx *MapLiteralContext) interface{} {
 	mapLiteral := &ast.MapLiteral{}
 	var keys []*ast.SchemaNameNode
-	var exprs []*ast.Expr
+	var exprs []ast.Expr
 	for i := range ctx.AllPropertyKeyName() {
 		keys = append(keys, ctx.PropertyKeyName(i).Accept(v).(*PropertyKeyNameContext).SchemaName().Accept(v).(*ast.SchemaNameNode))
-		exprs = append(exprs, ctx.Expr(i).Accept(v).(*ast.Expr))
+		exprs = append(exprs, ctx.Expr(i).Accept(v).(ast.Expr))
 	}
 	mapLiteral.PropertyKeys = keys
 	mapLiteral.Exprs = exprs
@@ -1011,9 +1010,9 @@ func (v *convertVisitor) VisitMapLiteral(ctx *MapLiteralContext) interface{} {
 
 func (v *convertVisitor) VisitListLiteral(ctx *ListLiteralContext) interface{} {
 	listLiteral := &ast.ListLiteral{}
-	var exprs []*ast.Expr
+	var exprs []ast.Expr
 	for _, expr := range ctx.AllExpr() {
-		exprs = append(exprs, expr.Accept(v).(*ast.Expr))
+		exprs = append(exprs, expr.Accept(v).(ast.Expr))
 	}
 	listLiteral.Exprs = exprs
 	return listLiteral

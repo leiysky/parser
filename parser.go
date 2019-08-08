@@ -13,12 +13,12 @@ type Parser struct {
 	l *CypherLexer
 }
 
-func (p *Parser) Parse(cypher string) ast.StmtNode {
+func (p *Parser) Parse(cypher string) ast.Stmt {
 	p.l = NewCypherLexer(antlr.NewInputStream(cypher))
 	tokenStream := antlr.NewCommonTokenStream(p.l, antlr.LexerDefaultTokenChannel)
 	parser := NewCypherParser(tokenStream)
 	tree := parser.Cypher()
 	v := &convertVisitor{parser}
-	cypherStmt := v.Visit(tree).(ast.StmtNode)
+	cypherStmt := v.Visit(tree).(ast.Stmt)
 	return cypherStmt
 }

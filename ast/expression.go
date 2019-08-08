@@ -1,5 +1,26 @@
 package ast
 
+type BinaryExpr struct {
+	baseExpr
+
+	Op OpType
+	L  Expr
+	R  Expr
+}
+
+type UnaryExpr struct {
+	baseExpr
+
+	Op OpType
+	E  Expr
+}
+
+type ParenExpr struct {
+	baseExpr
+
+	InnerExpr Expr
+}
+
 type PropertyExpr struct {
 	baseExpr
 
@@ -275,9 +296,9 @@ type ListOperationExpr struct {
 	baseExpr
 
 	InExpr     *PropertyOrLabelsExpr
-	SingleExpr *Expr
+	SingleExpr Expr
 	// RangeExprs[0] is lower bound, RangeExprs[1] is upper bound
-	RangeExprs [2]*Expr
+	RangeExprs [2]Expr
 }
 
 func (n *ListOperationExpr) Accept(v Visitor) (Node, bool) {
@@ -360,7 +381,7 @@ type Atom struct {
 	CaseExpr             *CaseExpr
 	ListComprehension    *ListComprehension
 	FilterExpr           *FilterExpr
-	ParenthesizedExpr    *Expr
+	ParenthesizedExpr    Expr
 	PatternComprehension *PatternComprehension
 	PatternElement       *PatternElement
 	Variable             *VariableNode
@@ -415,9 +436,9 @@ func (n *PropertyLookup) Accept(v Visitor) (Node, bool) {
 type CaseExpr struct {
 	baseExpr
 
-	Expr *Expr
+	Expr Expr
 	Alts []*CaseAlt
-	Else *Expr
+	Else Expr
 }
 
 func (n *CaseExpr) Accept(v Visitor) (Node, bool) {
@@ -437,8 +458,8 @@ func (n *CaseExpr) Accept(v Visitor) (Node, bool) {
 type CaseAlt struct {
 	baseExpr
 
-	When *Expr
-	Then *Expr
+	When Expr
+	Then Expr
 }
 
 func (n *CaseAlt) Accept(v Visitor) (Node, bool) {
@@ -456,8 +477,8 @@ type FilterExpr struct {
 	baseExpr
 
 	Variable *VariableNode
-	In       *Expr
-	Where    *Expr
+	In       Expr
+	Where    Expr
 }
 
 func (n *FilterExpr) Accept(v Visitor) (Node, bool) {
@@ -478,7 +499,7 @@ type ListComprehension struct {
 	baseExpr
 
 	FilterExpr *FilterExpr
-	Expr       *Expr
+	Expr       Expr
 }
 
 func (n *ListComprehension) Accept(v Visitor) (Node, bool) {
