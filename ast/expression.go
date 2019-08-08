@@ -1,26 +1,5 @@
 package ast
 
-type BinaryExpr struct {
-	baseExpr
-
-	Op OpType
-	L  Expr
-	R  Expr
-}
-
-type UnaryExpr struct {
-	baseExpr
-
-	Op OpType
-	E  Expr
-}
-
-type ParenExpr struct {
-	baseExpr
-
-	InnerExpr Expr
-}
-
 type PropertyExpr struct {
 	baseExpr
 
