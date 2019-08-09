@@ -553,10 +553,7 @@ func (v *ConvertVisitor) VisitReturnClause(ctx *ReturnClauseContext) interface{}
 
 func (v *ConvertVisitor) VisitReturnBody(ctx *ReturnBodyContext) interface{} {
 	returnBody := &ast.ReturnBody{}
-	var returnItems []*ast.ReturnItem
-	for _, item := range ctx.ReturnItems().Accept(v).(*ReturnItemsContext).AllReturnItem() {
-		returnItems = append(returnItems, item.Accept(v).(*ast.ReturnItem))
-	}
+	returnItems := ctx.ReturnItems().Accept(v).([]*ast.ReturnItem)
 	returnBody.ReturnItems = returnItems
 	if ctx.OrderClause() != nil {
 		returnBody.OrderBy = ctx.OrderClause().Accept(v).(*ast.OrderClause)
@@ -571,7 +568,19 @@ func (v *ConvertVisitor) VisitReturnBody(ctx *ReturnBodyContext) interface{} {
 }
 
 func (v *ConvertVisitor) VisitReturnItems(ctx *ReturnItemsContext) interface{} {
-	return ctx
+	var returnItems []*ast.ReturnItem
+	if len(ctx.GetTokens(5)) > 0 {
+		returnItems = []*ast.ReturnItem{
+			&ast.ReturnItem{
+				Wildcard: true,
+			},
+		}
+		return returnItems
+	}
+	for _, item := range ctx.AllReturnItem() {
+		returnItems = append(returnItems, item.Accept(v).(*ast.ReturnItem))
+	}
+	return returnItems
 }
 
 func (v *ConvertVisitor) VisitReturnItem(ctx *ReturnItemContext) interface{} {

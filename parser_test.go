@@ -1,11 +1,55 @@
+// Copyright 2019 leiysky
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package parser
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/leiysky/parser/ast"
 )
+
+type testCase struct {
+	original string
+	pass     bool
+	target   string
+}
+
+var cases = []testCase{
+	{"match (n) return n", true, "MATCH (`n`) RETURN `n`"},
+	{"match (n:Label)-[r:Type *1..2 {hello:'world'}]->() return *", true, "MATCH (`n`:Label)-[`r`:Type*1..2{hello: 'world'}]->() RETURN *"},
+}
+
+func runTestCase(t *testing.T, cases []testCase) {
+	parser := New()
+	var target strings.Builder
+	for _, c := range cases {
+		target.Reset()
+		originalAst := parser.Parse(c.original)
+		ctx := ast.NewRestoreContext(&target)
+		originalAst.Restore(ctx)
+		if target.String() != c.target {
+			t.Fatalf("obtained: %s; expected: %s", target.String(), c.target)
+		}
+	}
+}
+
+func TestCases(t *testing.T) {
+	runTestCase(t, cases)
+}
 
 type testVisitor struct {
 	ast.Visitor
@@ -65,11 +109,13 @@ RETURN n
 func TestExpression(t *testing.T) {
 	parser := New()
 	stmt := parser.Parse(`
-	MATCH (n)
-	WHERE n OR n AND n XOR NOT n < n > n = n <= n >= n <> n + n - n * n / n % -n
+	MATCH (n:Label1:Label2)-[r:Type1|Type2*1..2{name:'hello'}]->(n1)
+	WHERE n.a OR n AND n XOR NOT n < n > n = n <= n >= n <> n + n - n * n / n % -n
 	MATCH (n)
 	WHERE 1 = 1 < 1
 	RETURN n
 	`)
 	stmt.Accept(&testVisitor{})
+	rst := ast.NewRestoreContext(os.Stdout)
+	stmt.Restore(rst)
 }

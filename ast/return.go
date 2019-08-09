@@ -67,6 +67,7 @@ func (n *ReturnBody) Restore(ctx *RestoreContext) {
 type ReturnItem struct {
 	baseStmt
 
+	Wildcard bool
 	Expr     Expr
 	As       bool
 	Variable *VariableNode
@@ -86,6 +87,10 @@ func (n *ReturnItem) Accept(v Visitor) (Node, bool) {
 }
 
 func (n *ReturnItem) Restore(ctx *RestoreContext) {
+	if n.Wildcard {
+		ctx.Write("*")
+		return
+	}
 	n.Expr.Restore(ctx)
 	if n.As {
 		ctx.WriteKeyword(" AS ")
