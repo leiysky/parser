@@ -9,26 +9,32 @@ import (
 )
 
 var (
-	_ CypherVisitor = &convertVisitor{}
+	_ CypherVisitor = &ConvertVisitor{}
 )
 
-type convertVisitor struct {
+type ConvertVisitor struct {
 	parser *CypherParser
 }
 
-func (v *convertVisitor) Visit(tree antlr.ParseTree) interface{} {
+func NewConvertVisitor(parser *CypherParser) CypherVisitor {
+	return &ConvertVisitor{
+		parser: parser,
+	}
+}
+
+func (v *ConvertVisitor) Visit(tree antlr.ParseTree) interface{} {
 	return tree.Accept(v)
 }
 
-func (v *convertVisitor) VisitChildren(node antlr.RuleNode) interface{} {
+func (v *ConvertVisitor) VisitChildren(node antlr.RuleNode) interface{} {
 	return nil
 }
 
-func (v *convertVisitor) VisitTerminal(node antlr.TerminalNode) interface{} { return nil }
+func (v *ConvertVisitor) VisitTerminal(node antlr.TerminalNode) interface{} { return nil }
 
-func (v *convertVisitor) VisitErrorNode(node antlr.ErrorNode) interface{} { return nil }
+func (v *ConvertVisitor) VisitErrorNode(node antlr.ErrorNode) interface{} { return nil }
 
-func (v *convertVisitor) VisitCypher(ctx *CypherContext) interface{} {
+func (v *ConvertVisitor) VisitCypher(ctx *CypherContext) interface{} {
 	node := &ast.CypherStmt{}
 	stmt := ctx.Stmt().Accept(v).(*StmtContext)
 	query := stmt.Query().Accept(v).(*QueryContext)
@@ -52,15 +58,15 @@ func (v *convertVisitor) VisitCypher(ctx *CypherContext) interface{} {
 	return node
 }
 
-func (v *convertVisitor) VisitStmt(ctx *StmtContext) interface{} {
+func (v *ConvertVisitor) VisitStmt(ctx *StmtContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitQuery(ctx *QueryContext) interface{} {
+func (v *ConvertVisitor) VisitQuery(ctx *QueryContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitRegularQuery(ctx *RegularQueryContext) interface{} {
+func (v *ConvertVisitor) VisitRegularQuery(ctx *RegularQueryContext) interface{} {
 	query := &ast.QueryStmt{}
 	clauses := ctx.SingleQuery().Accept(v).([]ast.Stmt)
 	for _, union := range ctx.AllUnionClause() {
@@ -70,7 +76,7 @@ func (v *convertVisitor) VisitRegularQuery(ctx *RegularQueryContext) interface{}
 	return query
 }
 
-func (v *convertVisitor) VisitUnionClause(ctx *UnionClauseContext) interface{} {
+func (v *ConvertVisitor) VisitUnionClause(ctx *UnionClauseContext) interface{} {
 	unionClause := &ast.UnionClause{}
 	if ctx.ALL() != nil {
 		unionClause.All = true
@@ -79,7 +85,7 @@ func (v *convertVisitor) VisitUnionClause(ctx *UnionClauseContext) interface{} {
 	return unionClause
 }
 
-func (v *convertVisitor) VisitSingleQuery(ctx *SingleQueryContext) interface{} {
+func (v *ConvertVisitor) VisitSingleQuery(ctx *SingleQueryContext) interface{} {
 	var clauses []ast.Stmt
 	if ctx.SinglePartQuery() != nil {
 		ss := ctx.SinglePartQuery().Accept(v).([]ast.Stmt)
@@ -91,7 +97,7 @@ func (v *convertVisitor) VisitSingleQuery(ctx *SingleQueryContext) interface{} {
 	return clauses
 }
 
-func (v *convertVisitor) VisitSinglePartQuery(ctx *SinglePartQueryContext) interface{} {
+func (v *ConvertVisitor) VisitSinglePartQuery(ctx *SinglePartQueryContext) interface{} {
 	var clauses []ast.Stmt
 	for _, c := range ctx.AllReadingClause() {
 		clauses = append(clauses, c.Accept(v).(ast.Stmt))
@@ -105,7 +111,7 @@ func (v *convertVisitor) VisitSinglePartQuery(ctx *SinglePartQueryContext) inter
 	return clauses
 }
 
-func (v *convertVisitor) VisitMultiPartQuery(ctx *MultiPartQueryContext) interface{} {
+func (v *ConvertVisitor) VisitMultiPartQuery(ctx *MultiPartQueryContext) interface{} {
 	var clauses []ast.Stmt
 	for _, p := range ctx.AllMultiPartQueryPartial() {
 		clauses = append(clauses, p.Accept(v).([]ast.Stmt)...)
@@ -114,7 +120,7 @@ func (v *convertVisitor) VisitMultiPartQuery(ctx *MultiPartQueryContext) interfa
 	return clauses
 }
 
-func (v *convertVisitor) VisitMultiPartQueryPartial(ctx *MultiPartQueryPartialContext) interface{} {
+func (v *ConvertVisitor) VisitMultiPartQueryPartial(ctx *MultiPartQueryPartialContext) interface{} {
 	var clauses []ast.Stmt
 	for _, r := range ctx.AllReadingClause() {
 		clauses = append(clauses, r.Accept(v).(ast.Stmt))
@@ -126,7 +132,7 @@ func (v *convertVisitor) VisitMultiPartQueryPartial(ctx *MultiPartQueryPartialCo
 	return clauses
 }
 
-func (v *convertVisitor) VisitWithClause(ctx *WithClauseContext) interface{} {
+func (v *ConvertVisitor) VisitWithClause(ctx *WithClauseContext) interface{} {
 	withClause := &ast.WithClause{}
 	if ctx.DISTINCT() != nil {
 		withClause.Distinct = true
@@ -138,7 +144,7 @@ func (v *convertVisitor) VisitWithClause(ctx *WithClauseContext) interface{} {
 	return withClause
 }
 
-func (v *convertVisitor) VisitReadingClause(ctx *ReadingClauseContext) interface{} {
+func (v *ConvertVisitor) VisitReadingClause(ctx *ReadingClauseContext) interface{} {
 	var n ast.Stmt
 	if ctx.MatchClause() != nil {
 		n = ctx.MatchClause().Accept(v).(*ast.MatchClause)
@@ -148,7 +154,7 @@ func (v *convertVisitor) VisitReadingClause(ctx *ReadingClauseContext) interface
 	return n
 }
 
-func (v *convertVisitor) VisitMatchClause(ctx *MatchClauseContext) interface{} {
+func (v *ConvertVisitor) VisitMatchClause(ctx *MatchClauseContext) interface{} {
 	match := &ast.MatchClause{}
 	if ctx.OPTIONAL() != nil {
 		match.Optional = true
@@ -160,14 +166,14 @@ func (v *convertVisitor) VisitMatchClause(ctx *MatchClauseContext) interface{} {
 	return match
 }
 
-func (v *convertVisitor) VisitUnwindClause(ctx *UnwindClauseContext) interface{} {
+func (v *ConvertVisitor) VisitUnwindClause(ctx *UnwindClauseContext) interface{} {
 	unwind := &ast.UnwindClause{}
 	unwind.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	unwind.Variable = ctx.Variable().Accept(v).(*ast.SymbolicNameNode)
 	return unwind
 }
 
-func (v *convertVisitor) VisitUpdatingClause(ctx *UpdatingClauseContext) interface{} {
+func (v *ConvertVisitor) VisitUpdatingClause(ctx *UpdatingClauseContext) interface{} {
 	var n ast.Stmt
 	if ctx.CreateClause() != nil {
 		n = ctx.CreateClause().Accept(v).(*ast.CreateClause)
@@ -183,13 +189,13 @@ func (v *convertVisitor) VisitUpdatingClause(ctx *UpdatingClauseContext) interfa
 	return n
 }
 
-func (v *convertVisitor) VisitCreateClause(ctx *CreateClauseContext) interface{} {
+func (v *ConvertVisitor) VisitCreateClause(ctx *CreateClauseContext) interface{} {
 	create := &ast.CreateClause{}
 	create.Pattern = ctx.Pattern().Accept(v).(*ast.Pattern)
 	return create
 }
 
-func (v *convertVisitor) VisitSetClause(ctx *SetClauseContext) interface{} {
+func (v *ConvertVisitor) VisitSetClause(ctx *SetClauseContext) interface{} {
 	set := &ast.SetClause{}
 	var items []*ast.SetItemStmt
 	for _, item := range ctx.AllSetItem() {
@@ -199,7 +205,7 @@ func (v *convertVisitor) VisitSetClause(ctx *SetClauseContext) interface{} {
 	return set
 }
 
-func (v *convertVisitor) VisitSetItem(ctx *SetItemContext) interface{} {
+func (v *ConvertVisitor) VisitSetItem(ctx *SetItemContext) interface{} {
 	setItem := &ast.SetItemStmt{}
 
 	if ctx.PropertyExpr() != nil {
@@ -227,7 +233,7 @@ func (v *convertVisitor) VisitSetItem(ctx *SetItemContext) interface{} {
 	return setItem
 }
 
-func (v *convertVisitor) VisitDeleteClause(ctx *DeleteClauseContext) interface{} {
+func (v *ConvertVisitor) VisitDeleteClause(ctx *DeleteClauseContext) interface{} {
 	deleteClause := &ast.DeleteClause{}
 	if ctx.DETACH() != nil {
 		deleteClause.Detach = true
@@ -240,7 +246,7 @@ func (v *convertVisitor) VisitDeleteClause(ctx *DeleteClauseContext) interface{}
 	return deleteClause
 }
 
-func (v *convertVisitor) VisitRemoveClause(ctx *RemoveClauseContext) interface{} {
+func (v *ConvertVisitor) VisitRemoveClause(ctx *RemoveClauseContext) interface{} {
 	removeClause := &ast.RemoveClause{}
 	var items []*ast.RemoveItemStmt
 	for _, item := range ctx.AllRemoveItem() {
@@ -250,7 +256,7 @@ func (v *convertVisitor) VisitRemoveClause(ctx *RemoveClauseContext) interface{}
 	return removeClause
 }
 
-func (v *convertVisitor) VisitRemoveItem(ctx *RemoveItemContext) interface{} {
+func (v *ConvertVisitor) VisitRemoveItem(ctx *RemoveItemContext) interface{} {
 	removeItem := &ast.RemoveItemStmt{}
 	if ctx.Variable() != nil {
 		removeItem.Type = ast.RemoveItemVariable
@@ -267,7 +273,7 @@ func (v *convertVisitor) VisitRemoveItem(ctx *RemoveItemContext) interface{} {
 	return removeItem
 }
 
-func (v *convertVisitor) VisitMergeClause(ctx *MergeClauseContext) interface{} {
+func (v *ConvertVisitor) VisitMergeClause(ctx *MergeClauseContext) interface{} {
 	mergeClause := &ast.MergeClause{}
 	mergeClause.PatternPart = ctx.PatternPart().Accept(v).(*ast.PatternPart)
 	var actions []*ast.MergeAction
@@ -278,7 +284,7 @@ func (v *convertVisitor) VisitMergeClause(ctx *MergeClauseContext) interface{} {
 	return mergeClause
 }
 
-func (v *convertVisitor) VisitMergeAction(ctx *MergeActionContext) interface{} {
+func (v *ConvertVisitor) VisitMergeAction(ctx *MergeActionContext) interface{} {
 	mergeAction := &ast.MergeAction{}
 	if ctx.CREATE() != nil {
 		mergeAction.Type = ast.MergeActionCreate
@@ -289,18 +295,18 @@ func (v *convertVisitor) VisitMergeAction(ctx *MergeActionContext) interface{} {
 	return mergeAction
 }
 
-func (v *convertVisitor) VisitWhereClause(ctx *WhereClauseContext) interface{} {
+func (v *ConvertVisitor) VisitWhereClause(ctx *WhereClauseContext) interface{} {
 	where := ctx.Expr().Accept(v).(ast.Expr)
 	return where
 }
 
-func (v *convertVisitor) VisitVariable(ctx *VariableContext) interface{} {
+func (v *ConvertVisitor) VisitVariable(ctx *VariableContext) interface{} {
 	variable := &ast.VariableNode{}
 	variable.SymbolicName = ctx.SymbolicName().Accept(v).(*ast.SymbolicNameNode)
 	return variable
 }
 
-func (v *convertVisitor) VisitSymbolicName(ctx *SymbolicNameContext) interface{} {
+func (v *ConvertVisitor) VisitSymbolicName(ctx *SymbolicNameContext) interface{} {
 	symbolicName := &ast.SymbolicNameNode{}
 
 	var i antlr.TerminalNode
@@ -340,23 +346,23 @@ func (v *convertVisitor) VisitSymbolicName(ctx *SymbolicNameContext) interface{}
 	return symbolicName
 }
 
-func (v *convertVisitor) VisitNodeLabels(ctx *NodeLabelsContext) interface{} {
+func (v *ConvertVisitor) VisitNodeLabels(ctx *NodeLabelsContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitNodeLabel(ctx *NodeLabelContext) interface{} {
+func (v *ConvertVisitor) VisitNodeLabel(ctx *NodeLabelContext) interface{} {
 	nodeLabel := &ast.NodeLabelNode{}
 	nodeLabel.LabelName = ctx.LabelName().Accept(v).(*ast.SchemaNameNode)
 	return nodeLabel
 }
 
-func (v *convertVisitor) VisitLabelName(ctx *LabelNameContext) interface{} {
+func (v *ConvertVisitor) VisitLabelName(ctx *LabelNameContext) interface{} {
 	labelName := &ast.SchemaNameNode{}
 	labelName.Type = ast.SchemaNameSymbolicName
 	return labelName
 }
 
-func (v *convertVisitor) VisitPattern(ctx *PatternContext) interface{} {
+func (v *ConvertVisitor) VisitPattern(ctx *PatternContext) interface{} {
 	pattern := &ast.Pattern{}
 	var parts []*ast.PatternPart
 	for _, part := range ctx.AllPatternPart() {
@@ -366,7 +372,7 @@ func (v *convertVisitor) VisitPattern(ctx *PatternContext) interface{} {
 	return pattern
 }
 
-func (v *convertVisitor) VisitPatternPart(ctx *PatternPartContext) interface{} {
+func (v *ConvertVisitor) VisitPatternPart(ctx *PatternPartContext) interface{} {
 	patternPart := &ast.PatternPart{}
 	if ctx.Variable() != nil {
 		patternPart.WithVariable = true
@@ -380,11 +386,11 @@ func (v *convertVisitor) VisitPatternPart(ctx *PatternPartContext) interface{} {
 	return patternPart
 }
 
-func (v *convertVisitor) VisitAnonymousPatternPart(ctx *AnonymousPatternPartContext) interface{} {
+func (v *ConvertVisitor) VisitAnonymousPatternPart(ctx *AnonymousPatternPartContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitPatternElement(ctx *PatternElementContext) interface{} {
+func (v *ConvertVisitor) VisitPatternElement(ctx *PatternElementContext) interface{} {
 	patternElement := &ast.PatternElement{}
 	// strip useless parenthesises recursively
 	if ctx.PatternElement() != nil {
@@ -405,7 +411,7 @@ func (v *convertVisitor) VisitPatternElement(ctx *PatternElementContext) interfa
 	return patternElement
 }
 
-func (v *convertVisitor) VisitNodePattern(ctx *NodePatternContext) interface{} {
+func (v *ConvertVisitor) VisitNodePattern(ctx *NodePatternContext) interface{} {
 	nodePattern := &ast.NodePattern{}
 	if ctx.Variable() != nil {
 		nodePattern.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
@@ -425,11 +431,11 @@ func (v *convertVisitor) VisitNodePattern(ctx *NodePatternContext) interface{} {
 	return nodePattern
 }
 
-func (v *convertVisitor) VisitPatternElementChain(ctx *PatternElementChainContext) interface{} {
+func (v *ConvertVisitor) VisitPatternElementChain(ctx *PatternElementChainContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitRelationshipPattern(ctx *RelationshipPatternContext) interface{} {
+func (v *ConvertVisitor) VisitRelationshipPattern(ctx *RelationshipPatternContext) interface{} {
 	relationshipPattern := &ast.RelationshipPattern{}
 	if ctx.LeftArrowHead() != nil && ctx.RightArrowHead() != nil {
 		relationshipPattern.Type = ast.RelationshipBoth
@@ -446,19 +452,19 @@ func (v *convertVisitor) VisitRelationshipPattern(ctx *RelationshipPatternContex
 	return relationshipPattern
 }
 
-func (v *convertVisitor) VisitLeftArrowHead(ctx *LeftArrowHeadContext) interface{} {
+func (v *ConvertVisitor) VisitLeftArrowHead(ctx *LeftArrowHeadContext) interface{} {
 	panic("Shouln't be invoked")
 }
 
-func (v *convertVisitor) VisitRightArrowHead(ctx *RightArrowHeadContext) interface{} {
+func (v *ConvertVisitor) VisitRightArrowHead(ctx *RightArrowHeadContext) interface{} {
 	panic("Shouln't be invoked")
 }
 
-func (v *convertVisitor) VisitDash(ctx *DashContext) interface{} {
+func (v *ConvertVisitor) VisitDash(ctx *DashContext) interface{} {
 	panic("Shouln't be invoked")
 }
 
-func (v *convertVisitor) VisitRelationshipDetail(ctx *RelationshipDetailContext) interface{} {
+func (v *ConvertVisitor) VisitRelationshipDetail(ctx *RelationshipDetailContext) interface{} {
 	relationshipDetail := &ast.RelationshipDetail{}
 	if ctx.Variable() != nil {
 		relationshipDetail.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
@@ -494,27 +500,27 @@ func (v *convertVisitor) VisitRelationshipDetail(ctx *RelationshipDetailContext)
 	return relationshipDetail
 }
 
-func (v *convertVisitor) VisitRangeLiteral(ctx *RangeLiteralContext) interface{} {
+func (v *ConvertVisitor) VisitRangeLiteral(ctx *RangeLiteralContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitMinHops(ctx *MinHopsContext) interface{} {
+func (v *ConvertVisitor) VisitMinHops(ctx *MinHopsContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitMaxHops(ctx *MaxHopsContext) interface{} {
+func (v *ConvertVisitor) VisitMaxHops(ctx *MaxHopsContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitRelationshipTypes(ctx *RelationshipTypesContext) interface{} {
+func (v *ConvertVisitor) VisitRelationshipTypes(ctx *RelationshipTypesContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitRelTypeName(ctx *RelTypeNameContext) interface{} {
+func (v *ConvertVisitor) VisitRelTypeName(ctx *RelTypeNameContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitSchemaName(ctx *SchemaNameContext) interface{} {
+func (v *ConvertVisitor) VisitSchemaName(ctx *SchemaNameContext) interface{} {
 	schemaName := &ast.SchemaNameNode{}
 	var i antlr.RuleContext
 	if i = ctx.SymbolicName(); i != nil {
@@ -527,7 +533,7 @@ func (v *convertVisitor) VisitSchemaName(ctx *SchemaNameContext) interface{} {
 	return schemaName
 }
 
-func (v *convertVisitor) VisitReturnClause(ctx *ReturnClauseContext) interface{} {
+func (v *ConvertVisitor) VisitReturnClause(ctx *ReturnClauseContext) interface{} {
 	returnClause := &ast.ReturnClause{}
 	if ctx.DISTINCT() != nil {
 		returnClause.Distinct = true
@@ -536,7 +542,7 @@ func (v *convertVisitor) VisitReturnClause(ctx *ReturnClauseContext) interface{}
 	return returnClause
 }
 
-func (v *convertVisitor) VisitReturnBody(ctx *ReturnBodyContext) interface{} {
+func (v *ConvertVisitor) VisitReturnBody(ctx *ReturnBodyContext) interface{} {
 	returnBody := &ast.ReturnBody{}
 	var returnItems []*ast.ReturnItem
 	for _, item := range ctx.ReturnItems().Accept(v).(*ReturnItemsContext).AllReturnItem() {
@@ -555,11 +561,11 @@ func (v *convertVisitor) VisitReturnBody(ctx *ReturnBodyContext) interface{} {
 	return returnBody
 }
 
-func (v *convertVisitor) VisitReturnItems(ctx *ReturnItemsContext) interface{} {
+func (v *ConvertVisitor) VisitReturnItems(ctx *ReturnItemsContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitReturnItem(ctx *ReturnItemContext) interface{} {
+func (v *ConvertVisitor) VisitReturnItem(ctx *ReturnItemContext) interface{} {
 	returnItem := &ast.ReturnItem{}
 	returnItem.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	if ctx.AS() != nil {
@@ -569,7 +575,7 @@ func (v *convertVisitor) VisitReturnItem(ctx *ReturnItemContext) interface{} {
 	return returnItem
 }
 
-func (v *convertVisitor) VisitOrderClause(ctx *OrderClauseContext) interface{} {
+func (v *ConvertVisitor) VisitOrderClause(ctx *OrderClauseContext) interface{} {
 	orderClause := &ast.OrderClause{}
 	var sortItems []*ast.SortItem
 	for _, item := range ctx.AllSortItem() {
@@ -578,15 +584,15 @@ func (v *convertVisitor) VisitOrderClause(ctx *OrderClauseContext) interface{} {
 	return orderClause
 }
 
-func (v *convertVisitor) VisitSkipClause(ctx *SkipClauseContext) interface{} {
+func (v *ConvertVisitor) VisitSkipClause(ctx *SkipClauseContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitLimitClause(ctx *LimitClauseContext) interface{} {
+func (v *ConvertVisitor) VisitLimitClause(ctx *LimitClauseContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitSortItem(ctx *SortItemContext) interface{} {
+func (v *ConvertVisitor) VisitSortItem(ctx *SortItemContext) interface{} {
 	sortItem := &ast.SortItem{}
 	sortItem.Expr = ctx.Expr().Accept(v).(ast.Expr)
 	if ctx.ASC() != nil || ctx.ASCENDING() != nil {
@@ -597,12 +603,12 @@ func (v *convertVisitor) VisitSortItem(ctx *SortItemContext) interface{} {
 	return sortItem
 }
 
-func (v *convertVisitor) VisitExpr(ctx *ExprContext) interface{} {
+func (v *ConvertVisitor) VisitExpr(ctx *ExprContext) interface{} {
 	expr := ctx.OrExpr().Accept(v).(ast.Expr)
 	return expr
 }
 
-func (v *convertVisitor) VisitOrExpr(ctx *OrExprContext) interface{} {
+func (v *ConvertVisitor) VisitOrExpr(ctx *OrExprContext) interface{} {
 	if len(ctx.AllXorExpr()) == 1 {
 		return ctx.XorExpr(0).Accept(v)
 	}
@@ -625,7 +631,7 @@ func (v *convertVisitor) VisitOrExpr(ctx *OrExprContext) interface{} {
 	return binaryExpr
 }
 
-func (v *convertVisitor) VisitXorExpr(ctx *XorExprContext) interface{} {
+func (v *ConvertVisitor) VisitXorExpr(ctx *XorExprContext) interface{} {
 	if len(ctx.AllAndExpr()) == 1 {
 		return ctx.AndExpr(0).Accept(v)
 	}
@@ -648,7 +654,7 @@ func (v *convertVisitor) VisitXorExpr(ctx *XorExprContext) interface{} {
 	return binaryExpr
 }
 
-func (v *convertVisitor) VisitAndExpr(ctx *AndExprContext) interface{} {
+func (v *ConvertVisitor) VisitAndExpr(ctx *AndExprContext) interface{} {
 	if len(ctx.AllNotExpr()) == 1 {
 		return ctx.NotExpr(0).Accept(v)
 	}
@@ -671,7 +677,7 @@ func (v *convertVisitor) VisitAndExpr(ctx *AndExprContext) interface{} {
 	return binaryExpr
 }
 
-func (v *convertVisitor) VisitNotExpr(ctx *NotExprContext) interface{} {
+func (v *ConvertVisitor) VisitNotExpr(ctx *NotExprContext) interface{} {
 	if len(ctx.AllNOT()) == 0 {
 		return ctx.ComparisonExpr().Accept(v)
 	}
@@ -694,7 +700,7 @@ type partialComparisonExpr struct {
 	Expr ast.Expr
 }
 
-func (v *convertVisitor) VisitComparisonExpr(ctx *ComparisonExprContext) interface{} {
+func (v *ConvertVisitor) VisitComparisonExpr(ctx *ComparisonExprContext) interface{} {
 	if len(ctx.AllPartialComparisonExpr()) == 0 {
 		return ctx.AddOrSubtractExpr().Accept(v)
 	}
@@ -718,7 +724,7 @@ func (v *convertVisitor) VisitComparisonExpr(ctx *ComparisonExprContext) interfa
 	return binaryExpr
 }
 
-func (v *convertVisitor) VisitPartialComparisonExpr(ctx *PartialComparisonExprContext) interface{} {
+func (v *ConvertVisitor) VisitPartialComparisonExpr(ctx *PartialComparisonExprContext) interface{} {
 	partialComparisonExpr := partialComparisonExpr{}
 	comp := ctx.GetChild(0).(antlr.TerminalNode)
 	switch comp.GetText() {
@@ -739,7 +745,7 @@ func (v *convertVisitor) VisitPartialComparisonExpr(ctx *PartialComparisonExprCo
 	return partialComparisonExpr
 }
 
-func (v *convertVisitor) VisitAddOrSubtractExpr(ctx *AddOrSubtractExprContext) interface{} {
+func (v *ConvertVisitor) VisitAddOrSubtractExpr(ctx *AddOrSubtractExprContext) interface{} {
 	if len(ctx.AllMultiplyDivideModuloExpr()) == 1 {
 		return ctx.MultiplyDivideModuloExpr(0).Accept(v)
 	}
@@ -774,7 +780,7 @@ func (v *convertVisitor) VisitAddOrSubtractExpr(ctx *AddOrSubtractExprContext) i
 	return binaryExpr
 }
 
-func (v *convertVisitor) VisitMultiplyDivideModuloExpr(ctx *MultiplyDivideModuloExprContext) interface{} {
+func (v *ConvertVisitor) VisitMultiplyDivideModuloExpr(ctx *MultiplyDivideModuloExprContext) interface{} {
 	if len(ctx.AllPowerOfExpr()) == 1 {
 		return ctx.PowerOfExpr(0).Accept(v)
 	}
@@ -811,7 +817,7 @@ func (v *convertVisitor) VisitMultiplyDivideModuloExpr(ctx *MultiplyDivideModulo
 	return binaryExpr
 }
 
-func (v *convertVisitor) VisitPowerOfExpr(ctx *PowerOfExprContext) interface{} {
+func (v *ConvertVisitor) VisitPowerOfExpr(ctx *PowerOfExprContext) interface{} {
 	if len(ctx.AllUnaryAddOrSubtractExpr()) == 1 {
 		return ctx.UnaryAddOrSubtractExpr(0).Accept(v)
 	}
@@ -835,7 +841,7 @@ func (v *convertVisitor) VisitPowerOfExpr(ctx *PowerOfExprContext) interface{} {
 	return binaryExpr
 }
 
-func (v *convertVisitor) VisitUnaryAddOrSubtractExpr(ctx *UnaryAddOrSubtractExprContext) interface{} {
+func (v *ConvertVisitor) VisitUnaryAddOrSubtractExpr(ctx *UnaryAddOrSubtractExprContext) interface{} {
 	if len(ctx.GetTokens(13))+len(ctx.GetTokens(14)) == 0 {
 		return ctx.StringListNullOperatorExpr().Accept(v)
 	}
@@ -863,7 +869,7 @@ func (v *convertVisitor) VisitUnaryAddOrSubtractExpr(ctx *UnaryAddOrSubtractExpr
 	return unaryExpr
 }
 
-func (v *convertVisitor) VisitStringListNullOperatorExpr(ctx *StringListNullOperatorExprContext) interface{} {
+func (v *ConvertVisitor) VisitStringListNullOperatorExpr(ctx *StringListNullOperatorExprContext) interface{} {
 	if len(ctx.AllStringOperatorExpr())+len(ctx.AllListOperatorExpr())+len(ctx.AllNullOperatorExpr()) == 0 {
 		return ctx.PropertyOrLabelsExpr().Accept(v)
 	}
@@ -895,7 +901,7 @@ func (v *convertVisitor) VisitStringListNullOperatorExpr(ctx *StringListNullOper
 	return predicationExpr
 }
 
-func (v *convertVisitor) VisitListOperatorExpr(ctx *ListOperatorExprContext) interface{} {
+func (v *ConvertVisitor) VisitListOperatorExpr(ctx *ListOperatorExprContext) interface{} {
 	listOperatorExpr := &ast.ListOperationExpr{}
 	if ctx.PropertyOrLabelsExpr() != nil {
 		listOperatorExpr.InExpr = ctx.PropertyOrLabelsExpr().Accept(v).(*ast.PropertyOrLabelsExpr)
@@ -909,7 +915,7 @@ func (v *convertVisitor) VisitListOperatorExpr(ctx *ListOperatorExprContext) int
 	return listOperatorExpr
 }
 
-func (v *convertVisitor) VisitStringOperatorExpr(ctx *StringOperatorExprContext) interface{} {
+func (v *ConvertVisitor) VisitStringOperatorExpr(ctx *StringOperatorExprContext) interface{} {
 	stringOperatorExpr := &ast.StringOperationExpr{}
 	if ctx.STARTS() != nil {
 		stringOperatorExpr.Type = ast.StringOperationStartsWith
@@ -922,7 +928,7 @@ func (v *convertVisitor) VisitStringOperatorExpr(ctx *StringOperatorExprContext)
 	return stringOperatorExpr
 }
 
-func (v *convertVisitor) VisitNullOperatorExpr(ctx *NullOperatorExprContext) interface{} {
+func (v *ConvertVisitor) VisitNullOperatorExpr(ctx *NullOperatorExprContext) interface{} {
 	nullOperatorExpr := &ast.NullOperationExpr{}
 	if ctx.NOT() == nil {
 		nullOperatorExpr.IsIsNull = true
@@ -930,7 +936,7 @@ func (v *convertVisitor) VisitNullOperatorExpr(ctx *NullOperatorExprContext) int
 	return nullOperatorExpr
 }
 
-func (v *convertVisitor) VisitPropertyOrLabelsExpr(ctx *PropertyOrLabelsExprContext) interface{} {
+func (v *ConvertVisitor) VisitPropertyOrLabelsExpr(ctx *PropertyOrLabelsExprContext) interface{} {
 	if len(ctx.AllPropertyLookup()) == 0 && ctx.NodeLabels() == nil {
 		return ctx.Atom().Accept(v)
 	}
@@ -950,17 +956,17 @@ func (v *convertVisitor) VisitPropertyOrLabelsExpr(ctx *PropertyOrLabelsExprCont
 	return propertyOrLabelsExpr
 }
 
-func (v *convertVisitor) VisitPropertyLookup(ctx *PropertyLookupContext) interface{} {
+func (v *ConvertVisitor) VisitPropertyLookup(ctx *PropertyLookupContext) interface{} {
 	propertyLookup := &ast.PropertyLookup{}
 	propertyLookup.PropertyKey = ctx.PropertyKeyName().Accept(v).(*PropertyKeyNameContext).SchemaName().Accept(v).(*ast.SchemaNameNode)
 	return propertyLookup
 }
 
-func (v *convertVisitor) VisitPropertyKeyName(ctx *PropertyKeyNameContext) interface{} {
+func (v *ConvertVisitor) VisitPropertyKeyName(ctx *PropertyKeyNameContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitCaseExpr(ctx *CaseExprContext) interface{} {
+func (v *ConvertVisitor) VisitCaseExpr(ctx *CaseExprContext) interface{} {
 	caseExpr := &ast.CaseExpr{}
 	var alts []*ast.CaseAlt
 	for _, alt := range ctx.AllCaseAlternatives() {
@@ -981,14 +987,14 @@ func (v *convertVisitor) VisitCaseExpr(ctx *CaseExprContext) interface{} {
 	return caseExpr
 }
 
-func (v *convertVisitor) VisitCaseAlternatives(ctx *CaseAlternativesContext) interface{} {
+func (v *ConvertVisitor) VisitCaseAlternatives(ctx *CaseAlternativesContext) interface{} {
 	caseAlt := &ast.CaseAlt{}
 	caseAlt.When = ctx.Expr(0).Accept(v).(ast.Expr)
 	caseAlt.Then = ctx.Expr(1).Accept(v).(ast.Expr)
 	return caseAlt
 }
 
-func (v *convertVisitor) VisitAtom(ctx *AtomContext) interface{} {
+func (v *ConvertVisitor) VisitAtom(ctx *AtomContext) interface{} {
 	atom := &ast.Atom{}
 	if ctx.Literal() != nil {
 		atom.Type = ast.AtomLiteral
@@ -1035,7 +1041,7 @@ func (v *convertVisitor) VisitAtom(ctx *AtomContext) interface{} {
 	return atom
 }
 
-func (v *convertVisitor) VisitRelationshipsPattern(ctx *RelationshipsPatternContext) interface{} {
+func (v *ConvertVisitor) VisitRelationshipsPattern(ctx *RelationshipsPatternContext) interface{} {
 	patternElement := &ast.PatternElement{}
 	// same as VisitPatternElement
 	patternElement.StartNode = ctx.NodePattern().Accept(v).(*ast.NodePattern)
@@ -1051,11 +1057,11 @@ func (v *convertVisitor) VisitRelationshipsPattern(ctx *RelationshipsPatternCont
 	return patternElement
 }
 
-func (v *convertVisitor) VisitParenthesizedExpr(ctx *ParenthesizedExprContext) interface{} {
+func (v *ConvertVisitor) VisitParenthesizedExpr(ctx *ParenthesizedExprContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitFilterExpr(ctx *FilterExprContext) interface{} {
+func (v *ConvertVisitor) VisitFilterExpr(ctx *FilterExprContext) interface{} {
 	filterExpr := &ast.FilterExpr{}
 	idInColl := ctx.IdInColl().Accept(v).(*IdInCollContext)
 	filterExpr.Variable = idInColl.Variable().Accept(v).(*ast.VariableNode)
@@ -1066,11 +1072,11 @@ func (v *convertVisitor) VisitFilterExpr(ctx *FilterExprContext) interface{} {
 	return filterExpr
 }
 
-func (v *convertVisitor) VisitIdInColl(ctx *IdInCollContext) interface{} {
+func (v *ConvertVisitor) VisitIdInColl(ctx *IdInCollContext) interface{} {
 	return ctx
 }
 
-func (v *convertVisitor) VisitListComprehension(ctx *ListComprehensionContext) interface{} {
+func (v *ConvertVisitor) VisitListComprehension(ctx *ListComprehensionContext) interface{} {
 	listComprehension := &ast.ListComprehension{}
 	listComprehension.FilterExpr = ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
 	if ctx.Expr() != nil {
@@ -1079,7 +1085,7 @@ func (v *convertVisitor) VisitListComprehension(ctx *ListComprehensionContext) i
 	return listComprehension
 }
 
-func (v *convertVisitor) VisitPatternComprehension(ctx *PatternComprehensionContext) interface{} {
+func (v *ConvertVisitor) VisitPatternComprehension(ctx *PatternComprehensionContext) interface{} {
 	patternComprehension := &ast.PatternComprehension{}
 	if ctx.Variable() != nil {
 		patternComprehension.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
@@ -1092,7 +1098,7 @@ func (v *convertVisitor) VisitPatternComprehension(ctx *PatternComprehensionCont
 	return patternComprehension
 }
 
-func (v *convertVisitor) VisitLiteral(ctx *LiteralContext) interface{} {
+func (v *ConvertVisitor) VisitLiteral(ctx *LiteralContext) interface{} {
 	literal := &ast.LiteralExpr{}
 	if ctx.NumberLiteral() != nil {
 		literal.Type = ast.LiteralNumber
@@ -1121,7 +1127,7 @@ func (v *convertVisitor) VisitLiteral(ctx *LiteralContext) interface{} {
 	return literal
 }
 
-func (v *convertVisitor) VisitNumberLiteral(ctx *NumberLiteralContext) interface{} {
+func (v *ConvertVisitor) VisitNumberLiteral(ctx *NumberLiteralContext) interface{} {
 	numberLiteral := &ast.NumberLiteral{}
 	if ctx.IntegerLiteral() != nil {
 		numberLiteral.Type = ast.NumberLiteralInteger
@@ -1133,11 +1139,11 @@ func (v *convertVisitor) VisitNumberLiteral(ctx *NumberLiteralContext) interface
 	return numberLiteral
 }
 
-func (v *convertVisitor) VisitBooleanLiteral(ctx *BooleanLiteralContext) interface{} {
+func (v *ConvertVisitor) VisitBooleanLiteral(ctx *BooleanLiteralContext) interface{} {
 	panic("Shouln't be invoked")
 }
 
-func (v *convertVisitor) VisitMapLiteral(ctx *MapLiteralContext) interface{} {
+func (v *ConvertVisitor) VisitMapLiteral(ctx *MapLiteralContext) interface{} {
 	mapLiteral := &ast.MapLiteral{}
 	var keys []*ast.SchemaNameNode
 	var exprs []ast.Expr
@@ -1150,7 +1156,7 @@ func (v *convertVisitor) VisitMapLiteral(ctx *MapLiteralContext) interface{} {
 	return mapLiteral
 }
 
-func (v *convertVisitor) VisitListLiteral(ctx *ListLiteralContext) interface{} {
+func (v *ConvertVisitor) VisitListLiteral(ctx *ListLiteralContext) interface{} {
 	listLiteral := &ast.ListLiteral{}
 	var exprs []ast.Expr
 	for _, expr := range ctx.AllExpr() {
@@ -1160,7 +1166,7 @@ func (v *convertVisitor) VisitListLiteral(ctx *ListLiteralContext) interface{} {
 	return listLiteral
 }
 
-func (v *convertVisitor) VisitIntegerLiteral(ctx *IntegerLiteralContext) interface{} {
+func (v *ConvertVisitor) VisitIntegerLiteral(ctx *IntegerLiteralContext) interface{} {
 	var value int
 	if ctx.HexInteger() != nil {
 		hex := ctx.HexInteger().GetSymbol().GetText()
@@ -1188,7 +1194,7 @@ func (v *convertVisitor) VisitIntegerLiteral(ctx *IntegerLiteralContext) interfa
 	return value
 }
 
-func (v *convertVisitor) VisitDoubleLiteral(ctx *DoubleLiteralContext) interface{} {
+func (v *ConvertVisitor) VisitDoubleLiteral(ctx *DoubleLiteralContext) interface{} {
 	var value float64
 	if ctx.RegularDecimalReal() != nil {
 		regular := ctx.RegularDecimalReal().GetSymbol().GetText()
@@ -1208,7 +1214,7 @@ func (v *convertVisitor) VisitDoubleLiteral(ctx *DoubleLiteralContext) interface
 	return value
 }
 
-func (v *convertVisitor) VisitParameter(ctx *ParameterContext) interface{} {
+func (v *ConvertVisitor) VisitParameter(ctx *ParameterContext) interface{} {
 	parameter := &ast.ParameterNode{}
 	if ctx.SymbolicName() != nil {
 		parameter.Type = ast.ParameterSymbolicname
@@ -1224,7 +1230,7 @@ func (v *convertVisitor) VisitParameter(ctx *ParameterContext) interface{} {
 	return parameter
 }
 
-func (v *convertVisitor) VisitProperties(ctx *PropertiesContext) interface{} {
+func (v *ConvertVisitor) VisitProperties(ctx *PropertiesContext) interface{} {
 	properties := &ast.Properties{}
 	if ctx.MapLiteral() != nil {
 		properties.Type = ast.PropertiesMapLiteral
@@ -1236,7 +1242,7 @@ func (v *convertVisitor) VisitProperties(ctx *PropertiesContext) interface{} {
 	return properties
 }
 
-func (v *convertVisitor) VisitPropertyExpr(ctx *PropertyExprContext) interface{} {
+func (v *ConvertVisitor) VisitPropertyExpr(ctx *PropertyExprContext) interface{} {
 	propertyExpr := &ast.PropertyExpr{}
 	propertyExpr.Atom = ctx.Atom().Accept(v).(*ast.Atom)
 	var lookups []*ast.PropertyLookup
@@ -1247,61 +1253,61 @@ func (v *convertVisitor) VisitPropertyExpr(ctx *PropertyExprContext) interface{}
 	return propertyExpr
 }
 
-func (v *convertVisitor) VisitReservedWord(ctx *ReservedWordContext) interface{} {
+func (v *ConvertVisitor) VisitReservedWord(ctx *ReservedWordContext) interface{} {
 	reservedWord := &ast.ReservedWordNode{}
 	reservedWord.Content = ctx.GetText()
 	return reservedWord
 }
 
-func (v *convertVisitor) VisitStandaloneCall(ctx *StandaloneCallContext) interface{} {
+func (v *ConvertVisitor) VisitStandaloneCall(ctx *StandaloneCallContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
 
-func (v *convertVisitor) VisitYieldItems(ctx *YieldItemsContext) interface{} {
+func (v *ConvertVisitor) VisitYieldItems(ctx *YieldItemsContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *convertVisitor) VisitYieldItem(ctx *YieldItemContext) interface{} {
+func (v *ConvertVisitor) VisitYieldItem(ctx *YieldItemContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *convertVisitor) VisitFunctionInvocation(ctx *FunctionInvocationContext) interface{} {
+func (v *ConvertVisitor) VisitFunctionInvocation(ctx *FunctionInvocationContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
 
-func (v *convertVisitor) VisitFunctionName(ctx *FunctionNameContext) interface{} {
+func (v *ConvertVisitor) VisitFunctionName(ctx *FunctionNameContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
 
-func (v *convertVisitor) VisitExplicitProcedureInvocation(ctx *ExplicitProcedureInvocationContext) interface{} {
+func (v *ConvertVisitor) VisitExplicitProcedureInvocation(ctx *ExplicitProcedureInvocationContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
 
-func (v *convertVisitor) VisitImplicitProcedureInvocation(ctx *ImplicitProcedureInvocationContext) interface{} {
+func (v *ConvertVisitor) VisitImplicitProcedureInvocation(ctx *ImplicitProcedureInvocationContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
 
-func (v *convertVisitor) VisitProcedureResultField(ctx *ProcedureResultFieldContext) interface{} {
+func (v *ConvertVisitor) VisitProcedureResultField(ctx *ProcedureResultFieldContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
 
-func (v *convertVisitor) VisitProcedureName(ctx *ProcedureNameContext) interface{} {
+func (v *ConvertVisitor) VisitProcedureName(ctx *ProcedureNameContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
 
-func (v *convertVisitor) VisitNamespace(ctx *NamespaceContext) interface{} {
+func (v *ConvertVisitor) VisitNamespace(ctx *NamespaceContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
 
-func (v *convertVisitor) VisitInQueryCall(ctx *InQueryCallContext) interface{} {
+func (v *ConvertVisitor) VisitInQueryCall(ctx *InQueryCallContext) interface{} {
 	// TODO
 	panic("not implemented")
 }
