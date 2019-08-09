@@ -30,6 +30,15 @@ func (n *SchemaNameNode) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *SchemaNameNode) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case SchemaNameSymbolicName:
+		n.SymbolicName.Restore(ctx)
+	case SchemaNameReservedWord:
+		n.ReservedWord.Restore(ctx)
+	}
+}
+
 // SymbolicNameType is enum of SymbolicNameNode types
 type SymbolicNameType byte
 
@@ -61,6 +70,25 @@ func (n *SymbolicNameNode) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *SymbolicNameNode) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case SymbolicNameUnescaped, SymbolicNameEscaped, SymbolicNameHexLetter:
+		ctx.Write(n.Value)
+	case SymbolicNameAny:
+		ctx.WriteKeyword("ANY")
+	case SymbolicNameCount:
+		ctx.WriteKeyword("COUNT")
+	case SymbolicNameExtract:
+		ctx.WriteKeyword("EXTRACT")
+	case SymbolicNameFilter:
+		ctx.WriteKeyword("FILTER")
+	case SymbolicNameNone:
+		ctx.WriteKeyword("NONE")
+	case SymbolicNameSingle:
+		ctx.WriteKeyword("SINGLE")
+	}
+}
+
 type ReservedWordNode struct {
 	baseNode
 
@@ -74,6 +102,10 @@ func (n *ReservedWordNode) Accept(v Visitor) (Node, bool) {
 	}
 	n = newNode.(*ReservedWordNode)
 	return v.Leave(n)
+}
+
+func (n *ReservedWordNode) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword(n.Content)
 }
 
 type VariableNode struct {
@@ -92,6 +124,12 @@ func (n *VariableNode) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *VariableNode) Restore(ctx *RestoreContext) {
+	ctx.Write("`")
+	n.SymbolicName.Restore(ctx)
+	ctx.Write("`")
+}
+
 type NodeLabelNode struct {
 	baseNode
 
@@ -108,11 +146,16 @@ func (n *NodeLabelNode) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *NodeLabelNode) Restore(ctx *RestoreContext) {
+	ctx.Write(":")
+	n.LabelName.Restore(ctx)
+}
+
 type DecimalInteger = int
 type ParameterType byte
 
 const (
-	ParameterSymbolicname ParameterType = iota
+	ParameterSymbolicName ParameterType = iota
 	ParameterDecimalInteger
 )
 
@@ -131,12 +174,21 @@ func (n *ParameterNode) Accept(v Visitor) (Node, bool) {
 	}
 	n = newNode.(*ParameterNode)
 	switch n.Type {
-	case ParameterSymbolicname:
+	case ParameterSymbolicName:
 		n.SymbolicName.Accept(v)
 	case ParameterDecimalInteger:
 		break
 	}
 	return v.Leave(n)
+}
+
+func (n *ParameterNode) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case ParameterSymbolicName:
+		n.SymbolicName.Restore(ctx)
+	case ParameterDecimalInteger:
+		ctx.Write(n.DecimalInteger)
+	}
 }
 
 type LiteralType byte
@@ -178,6 +230,25 @@ func (n *LiteralExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *LiteralExpr) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case LiteralNumber:
+		n.Number.Restore(ctx)
+	case LiteralString:
+		ctx.WriteString(n.String)
+	case LiteralBoolean:
+		if n.Boolean {
+			ctx.WriteKeyword("TRUE")
+		} else {
+			ctx.WriteKeyword("FALSE")
+		}
+	case LiteralList:
+		n.List.Restore(ctx)
+	case LiteralMap:
+		n.Map.Restore(ctx)
+	}
+}
+
 type NumberLiteralType byte
 
 const (
@@ -200,6 +271,15 @@ func (n *NumberLiteral) Accept(v Visitor) (Node, bool) {
 	}
 	n = newNode.(*NumberLiteral)
 	return v.Leave(n)
+}
+
+func (n *NumberLiteral) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case NumberLiteralInteger:
+		ctx.Write(n.Integer)
+	case NumberLiteralDouble:
+		ctx.Write(n.Double)
+	}
 }
 
 // type StringLiteral struct {
@@ -236,6 +316,19 @@ func (n *MapLiteral) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *MapLiteral) Restore(ctx *RestoreContext) {
+	ctx.Write("{")
+	for i := range n.PropertyKeys {
+		if i > 0 {
+			ctx.Write(", ")
+		}
+		n.PropertyKeys[i].Restore(ctx)
+		ctx.Write(": ")
+		n.Exprs[i].Restore(ctx)
+	}
+	ctx.Write("}")
+}
+
 type ListLiteral struct {
 	baseNode
 
@@ -252,4 +345,14 @@ func (n *ListLiteral) Accept(v Visitor) (Node, bool) {
 		expr.Accept(v)
 	}
 	return v.Leave(n)
+}
+
+func (n *ListLiteral) Restore(ctx *RestoreContext) {
+	ctx.Write("[")
+	for i, expr := range n.Exprs {
+		if i > 0 {
+			ctx.Write(", ")
+		}
+		expr.Restore(ctx)
+	}
 }

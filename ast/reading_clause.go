@@ -33,6 +33,15 @@ func (n *ReadingClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *ReadingClause) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case ReadingClauseMatch:
+		n.Match.Restore(ctx)
+	case ReadingClauseUnwind:
+		n.Unwind.Restore(ctx)
+	}
+}
+
 // MatchClause represents MATCH clause
 type MatchClause struct {
 	baseStmt
@@ -55,6 +64,19 @@ func (n *MatchClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *MatchClause) Restore(ctx *RestoreContext) {
+	if n.Optional {
+		ctx.Write("OPTIONAL MATCH ")
+	} else {
+		ctx.Write("MATCH ")
+	}
+	n.Pattern.Restore(ctx)
+	if n.Where != nil {
+		ctx.WriteKeyword(" WHERE ")
+		n.Where.Restore(ctx)
+	}
+}
+
 type UnwindClause struct {
 	baseStmt
 
@@ -73,4 +95,11 @@ func (n *UnwindClause) Accept(v Visitor) (Node, bool) {
 		n.Variable.Accept(v)
 	}
 	return v.Leave(n)
+}
+
+func (n *UnwindClause) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("UNWIND ")
+	n.Expr.Restore(ctx)
+	ctx.WriteKeyword(" AS ")
+	n.Variable.Restore(ctx)
 }

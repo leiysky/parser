@@ -8,6 +8,16 @@ var (
 	_ Expr = &PropertyExpr{}
 	_ Expr = &PropertyOrLabelsExpr{}
 	_ Expr = &LiteralExpr{}
+	_ Expr = &StringOperationExpr{}
+	_ Expr = &NullOperationExpr{}
+	_ Expr = &ListOperationExpr{}
+	_ Expr = &Atom{}
+	_ Expr = &CaseExpr{}
+	_ Expr = &CaseAlt{}
+	_ Expr = &ListComprehension{}
+	_ Expr = &ParenExpr{}
+	_ Expr = &FilterExpr{}
+	_ Node = &PropertyLookup{}
 )
 
 // PropertyExpr represents a property lookup expression like `a.b.c`.
@@ -33,6 +43,13 @@ func (n *PropertyExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *PropertyExpr) Restore(ctx *RestoreContext) {
+	n.Atom.Restore(ctx)
+	for _, l := range n.Lookups {
+		l.Restore(ctx)
+	}
+}
+
 // BinaryExpr represents a binary expression with left expression, right expression and an operator.
 type BinaryExpr struct {
 	baseExpr
@@ -54,6 +71,12 @@ func (n *BinaryExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *BinaryExpr) Restore(ctx *RestoreContext) {
+	n.L.Restore(ctx)
+	ctx.Writef(" %s ", n.Op)
+	n.R.Restore(ctx)
+}
+
 // UnaryExpr represents a unary expression with expression and an operator.
 type UnaryExpr struct {
 	baseExpr
@@ -71,6 +94,11 @@ func (n *UnaryExpr) Accept(v Visitor) (Node, bool) {
 	n = newNode.(*UnaryExpr)
 	n.V.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *UnaryExpr) Restore(ctx *RestoreContext) {
+	ctx.Write(n.Op.String())
+	n.V.Restore(ctx)
 }
 
 // PredicationType represents types of PredicationExpr
@@ -100,6 +128,10 @@ func (n *PredicationExpr) Accept(v Visitor) (Node, bool) {
 	n = newNode.(*PredicationExpr)
 	n.Expr.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *PredicationExpr) Restore(ctx *RestoreContext) {
+	n.Expr.Restore(ctx)
 }
 
 // OpType represents operator type of expression
@@ -192,6 +224,20 @@ func (n *StringOperationExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *StringOperationExpr) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case StringOperationStartsWith:
+		ctx.WriteKeyword("STARTS WITH ")
+		n.Expr.Restore(ctx)
+	case StringOperationEndsWith:
+		ctx.WriteKeyword("ENDS WITH ")
+		n.Expr.Restore(ctx)
+	case StringOperationContains:
+		ctx.WriteKeyword("CONTAINS ")
+		n.Expr.Restore(ctx)
+	}
+}
+
 type ListOperationType byte
 
 const (
@@ -205,7 +251,6 @@ type ListOperationExpr struct {
 
 	InExpr     *PropertyOrLabelsExpr
 	SingleExpr Expr
-	// RangeExprs[0] is lower bound, RangeExprs[1] is upper bound
 	LowerBound Expr
 	UpperBound Expr
 }
@@ -219,6 +264,23 @@ func (n *ListOperationExpr) Accept(v Visitor) (Node, bool) {
 	n.InExpr.Accept(v)
 	n.SingleExpr.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *ListOperationExpr) Restore(ctx *RestoreContext) {
+	if n.InExpr != nil {
+		ctx.WriteKeyword("IN ")
+		n.InExpr.Restore(ctx)
+	} else if n.SingleExpr != nil {
+		ctx.Write("[")
+		n.SingleExpr.Restore(ctx)
+		ctx.Write("]")
+	} else {
+		ctx.Write("[")
+		n.LowerBound.Restore(ctx)
+		ctx.Write("..")
+		n.UpperBound.Restore(ctx)
+		ctx.Write("]")
+	}
 }
 
 type NullOperationExpr struct {
@@ -236,6 +298,14 @@ func (n *NullOperationExpr) Accept(v Visitor) (Node, bool) {
 	}
 	n = newNode.(*NullOperationExpr)
 	return v.Leave(n)
+}
+
+func (n *NullOperationExpr) Restore(ctx *RestoreContext) {
+	if n.IsIsNull {
+		ctx.WriteKeyword("IS NULL")
+	} else {
+		ctx.WriteKeyword("IS NOT NULL")
+	}
 }
 
 type PropertyOrLabelsExpr struct {
@@ -260,6 +330,16 @@ func (n *PropertyOrLabelsExpr) Accept(v Visitor) (Node, bool) {
 		label.Accept(v)
 	}
 	return v.Leave(n)
+}
+
+func (n *PropertyOrLabelsExpr) Restore(ctx *RestoreContext) {
+	n.Atom.Restore(ctx)
+	for _, l := range n.PropertyLookups {
+		l.Restore(ctx)
+	}
+	for _, label := range n.NodeLabels {
+		label.Restore(ctx)
+	}
 }
 
 type AtomType byte
@@ -326,6 +406,41 @@ func (n *Atom) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *Atom) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case AtomLiteral:
+		n.Literal.Restore(ctx)
+	case AtomParameter:
+		n.Parameter.Restore(ctx)
+	case AtomCase:
+		n.CaseExpr.Restore(ctx)
+	case AtomCount:
+		ctx.WriteKeyword("COUNT (*)")
+	case AtomList:
+		n.ListComprehension.Restore(ctx)
+	case AtomPatternComprehension:
+		n.PatternComprehension.Restore(ctx)
+	case AtomAllFilter:
+		ctx.WriteKeyword("ALL ")
+		n.FilterExpr.Restore(ctx)
+	case AtomAnyFilter:
+		ctx.WriteKeyword("ANY ")
+		n.FilterExpr.Restore(ctx)
+	case AtomNoneFilter:
+		ctx.WriteKeyword("NONE ")
+		n.FilterExpr.Restore(ctx)
+	case AtomSingleFilter:
+		ctx.WriteKeyword("SINGLE ")
+		n.FilterExpr.Restore(ctx)
+	case AtomPattern:
+		n.PatternElement.Restore(ctx)
+	case AtomParenthesizedExpr:
+		n.ParenthesizedExpr.Restore(ctx)
+	case AtomVariable:
+		n.Variable.Restore(ctx)
+	}
+}
+
 type PropertyLookup struct {
 	Node
 
@@ -340,6 +455,13 @@ func (n *PropertyLookup) Accept(v Visitor) (Node, bool) {
 	n = newNode.(*PropertyLookup)
 	n.PropertyKey.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *PropertyLookup) Restore(ctx *RestoreContext) {
+	ctx.Write(".")
+	ctx.Write("`")
+	n.PropertyKey.Restore(ctx)
+	ctx.Write("`")
 }
 
 type CaseExpr struct {
@@ -364,6 +486,23 @@ func (n *CaseExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *CaseExpr) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("CASE")
+	if n.Expr != nil {
+		ctx.Write(" ")
+		n.Expr.Restore(ctx)
+	}
+	for _, alt := range n.Alts {
+		ctx.Write(" ")
+		alt.Restore(ctx)
+	}
+	if n.Else != nil {
+		ctx.WriteKeyword(" ELSE ")
+		n.Else.Restore(ctx)
+	}
+	ctx.WriteKeyword(" END")
+}
+
 type CaseAlt struct {
 	baseExpr
 
@@ -380,6 +519,13 @@ func (n *CaseAlt) Accept(v Visitor) (Node, bool) {
 	n.When.Accept(v)
 	n.Then.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *CaseAlt) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("WHEN ")
+	n.When.Restore(ctx)
+	ctx.WriteKeyword("THEN ")
+	n.Then.Restore(ctx)
 }
 
 type FilterExpr struct {
@@ -404,6 +550,16 @@ func (n *FilterExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *FilterExpr) Restore(ctx *RestoreContext) {
+	n.Variable.Restore(ctx)
+	ctx.WriteKeyword(" IN ")
+	n.In.Restore(ctx)
+	if n.Where != nil {
+		ctx.WriteKeyword(" WHERE ")
+		n.Where.Restore(ctx)
+	}
+}
+
 type ListComprehension struct {
 	baseExpr
 
@@ -424,7 +580,39 @@ func (n *ListComprehension) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *ListComprehension) Restore(ctx *RestoreContext) {
+	ctx.Write("[")
+	n.FilterExpr.Restore(ctx)
+	if n.Expr != nil {
+		ctx.Write(" | ")
+		n.Expr.Restore(ctx)
+	}
+	ctx.Write("]")
+}
+
 type FunctionInvocation struct {
 	// TODO
 	// don't support now
+}
+
+type ParenExpr struct {
+	baseExpr
+
+	Expr Expr
+}
+
+func (n *ParenExpr) Accept(v Visitor) (Node, bool) {
+	newNode, skip := v.Enter(n)
+	if skip {
+		return v.Leave(n)
+	}
+	n = newNode.(*ParenExpr)
+	n.Expr.Accept(v)
+	return v.Leave(n)
+}
+
+func (n *ParenExpr) Restore(ctx *RestoreContext) {
+	ctx.Write("(")
+	n.Expr.Restore(ctx)
+	ctx.Write(")")
 }

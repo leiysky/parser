@@ -1,43 +1,5 @@
 package ast
 
-type UpdatingClauseType byte
-
-const (
-	UpdatingClauseCreate UpdatingClauseType = iota
-	UpdatingClauseMerge
-	UpdatingClauseSet
-	UpdatingClauseDelete
-	UpdatingClauseRemove
-)
-
-type UpdatingClause struct {
-	baseStmt
-
-	Type   UpdatingClauseType
-	Create *CreateClause
-	Merge  *MergeClause
-	Set    *SetClause
-	Delete *DeleteClause
-	Remove *RemoveClause
-}
-
-func (n *UpdatingClause) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*UpdatingClause)
-	switch n.Type {
-	case UpdatingClauseCreate:
-		n.Create.Accept(v)
-	case UpdatingClauseMerge:
-		n.Merge.Accept(v)
-	case UpdatingClauseSet:
-		n.Set.Accept(v)
-	}
-	return v.Leave(n)
-}
-
 // CreateClause represents CREATE clause node
 type CreateClause struct {
 	baseStmt
@@ -53,6 +15,11 @@ func (n *CreateClause) Accept(v Visitor) (Node, bool) {
 	n = newNode.(*CreateClause)
 	n.Pattern.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *CreateClause) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("CREATE ")
+	n.Pattern.Restore(ctx)
 }
 
 // MergeClause represents MERGE clause node
@@ -74,6 +41,17 @@ func (n *MergeClause) Accept(v Visitor) (Node, bool) {
 		action.Accept(v)
 	}
 	return v.Leave(n)
+}
+
+func (n *MergeClause) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("MERGE ")
+	n.PatternPart.Restore(ctx)
+	for i, action := range n.MergeActions {
+		if i > 0 {
+			ctx.Write(" ")
+		}
+		action.Restore(ctx)
+	}
 }
 
 type MergeActionType byte
@@ -102,11 +80,21 @@ func (n *MergeAction) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *MergeAction) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case MergeActionCreate:
+		ctx.WriteKeyword("ON CREATE ")
+	case MergeActionMatch:
+		ctx.WriteKeyword("ON MATCH ")
+	}
+	n.Set.Restore(ctx)
+}
+
 // SetClause represents SET clause node
 type SetClause struct {
 	baseStmt
 
-	SetItems []*SetItemStmt
+	SetItems []*SetItem
 }
 
 func (n *SetClause) Accept(v Visitor) (Node, bool) {
@@ -121,6 +109,16 @@ func (n *SetClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *SetClause) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("SET ")
+	for i, item := range n.SetItems {
+		if i > 0 {
+			ctx.Write(", ")
+		}
+		item.Restore(ctx)
+	}
+}
+
 type SetItemType byte
 
 const (
@@ -130,7 +128,7 @@ const (
 	SetItemVariableLabel
 )
 
-type SetItemStmt struct {
+type SetItem struct {
 	baseStmt
 
 	Type     SetItemType
@@ -140,12 +138,12 @@ type SetItemStmt struct {
 	Labels   []*NodeLabelNode
 }
 
-func (n *SetItemStmt) Accept(v Visitor) (Node, bool) {
+func (n *SetItem) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
 		return v.Leave(n)
 	}
-	n = newNode.(*SetItemStmt)
+	n = newNode.(*SetItem)
 	switch n.Type {
 	case SetItemProperty:
 		n.Property.Accept(v)
@@ -162,6 +160,28 @@ func (n *SetItemStmt) Accept(v Visitor) (Node, bool) {
 		}
 	}
 	return v.Leave(n)
+}
+
+func (n *SetItem) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case SetItemProperty:
+		n.Property.Restore(ctx)
+		ctx.Write(" = ")
+		n.Expr.Restore(ctx)
+	case SetItemVariableAssignment:
+		n.Variable.Restore(ctx)
+		ctx.Write(" = ")
+		n.Expr.Restore(ctx)
+	case SetItemVariableIncrement:
+		n.Variable.Restore(ctx)
+		ctx.Write(" += ")
+		n.Expr.Restore(ctx)
+	case SetItemVariableLabel:
+		n.Variable.Restore(ctx)
+		for _, label := range n.Labels {
+			label.Restore(ctx)
+		}
+	}
 }
 
 type DeleteClause struct {
@@ -183,10 +203,23 @@ func (n *DeleteClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *DeleteClause) Restore(ctx *RestoreContext) {
+	if n.Detach {
+		ctx.WriteKeyword("DETACH ")
+	}
+	ctx.WriteKeyword("DELETE ")
+	for i, expr := range n.Exprs {
+		if i > 0 {
+			ctx.Write(", ")
+		}
+		expr.Restore(ctx)
+	}
+}
+
 type RemoveClause struct {
 	baseStmt
 
-	RemoveItems []*RemoveItemStmt
+	RemoveItems []*RemoveItem
 }
 
 func (n *RemoveClause) Accept(v Visitor) (Node, bool) {
@@ -201,6 +234,16 @@ func (n *RemoveClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *RemoveClause) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("REMOVE ")
+	for i, item := range n.RemoveItems {
+		if i > 0 {
+			ctx.Write(", ")
+		}
+		item.Restore(ctx)
+	}
+}
+
 type RemoveItemType byte
 
 const (
@@ -208,7 +251,7 @@ const (
 	RemoveItemProperty
 )
 
-type RemoveItemStmt struct {
+type RemoveItem struct {
 	baseStmt
 
 	Type     RemoveItemType
@@ -217,12 +260,12 @@ type RemoveItemStmt struct {
 	Property *PropertyExpr
 }
 
-func (n *RemoveItemStmt) Accept(v Visitor) (Node, bool) {
+func (n *RemoveItem) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
 		return v.Leave(n)
 	}
-	n = newNode.(*RemoveItemStmt)
+	n = newNode.(*RemoveItem)
 	switch n.Type {
 	case RemoveItemVariable:
 		n.Variable.Accept(v)
@@ -234,4 +277,16 @@ func (n *RemoveItemStmt) Accept(v Visitor) (Node, bool) {
 		n.Property.Accept(v)
 	}
 	return v.Leave(n)
+}
+
+func (n *RemoveItem) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case RemoveItemVariable:
+		n.Variable.Restore(ctx)
+		for _, label := range n.Labels {
+			label.Restore(ctx)
+		}
+	case RemoveItemProperty:
+		n.Property.Restore(ctx)
+	}
 }

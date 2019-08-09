@@ -17,11 +17,20 @@ func (n *Pattern) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *Pattern) Restore(ctx *RestoreContext) {
+	for i, part := range n.Parts {
+		if i > 0 {
+			ctx.Write(", ")
+		}
+		part.Restore(ctx)
+	}
+}
+
 type PatternPart struct {
 	baseNode
-	WithVariable bool
-	Variable     *VariableNode
-	Element      *PatternElement
+
+	Variable *VariableNode
+	Element  *PatternElement
 }
 
 func (n *PatternPart) Accept(v Visitor) (Node, bool) {
@@ -35,6 +44,14 @@ func (n *PatternPart) Accept(v Visitor) (Node, bool) {
 	}
 	n.Element.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *PatternPart) Restore(ctx *RestoreContext) {
+	if n.Variable != nil {
+		n.Variable.Restore(ctx)
+		ctx.Write(" = ")
+	}
+	n.Element.Restore(ctx)
 }
 
 type PatternElement struct {
@@ -65,6 +82,14 @@ func (n *PatternElement) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *PatternElement) Restore(ctx *RestoreContext) {
+	n.StartNode.Restore(ctx)
+	for i := range n.Relationships {
+		n.Relationships[i].Restore(ctx)
+		n.Nodes[i].Restore(ctx)
+	}
+}
+
 type NodePattern struct {
 	baseNode
 
@@ -89,6 +114,20 @@ func (n *NodePattern) Accept(v Visitor) (Node, bool) {
 		n.Properties.Accept(v)
 	}
 	return v.Leave(n)
+}
+
+func (n *NodePattern) Restore(ctx *RestoreContext) {
+	ctx.Write("(")
+	if n.Variable != nil {
+		n.Variable.Restore(ctx)
+	}
+	for _, label := range n.Labels {
+		label.Restore(ctx)
+	}
+	if n.Properties != nil {
+		n.Properties.Restore(ctx)
+	}
+	ctx.Write(")")
 }
 
 // RelationshipType represents types of Relationships
@@ -120,6 +159,27 @@ func (n *RelationshipPattern) Accept(v Visitor) (Node, bool) {
 	n = newNode.(*RelationshipPattern)
 	n.Detail.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *RelationshipPattern) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case RelationshipLeft:
+		ctx.Write("<-")
+		n.Detail.Restore(ctx)
+		ctx.Write("-")
+	case RelationshipRight:
+		ctx.Write("-")
+		n.Detail.Restore(ctx)
+		ctx.Write("->")
+	case RelationshipBoth:
+		ctx.Write("<-")
+		n.Detail.Restore(ctx)
+		ctx.Write("->")
+	case RelationshipNone:
+		ctx.Write("-")
+		n.Detail.Restore(ctx)
+		ctx.Write("-")
+	}
 }
 
 type RelationshipDetail struct {
@@ -161,6 +221,35 @@ func (n *RelationshipDetail) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *RelationshipDetail) Restore(ctx *RestoreContext) {
+	ctx.Write("[")
+	if n.Variable != nil {
+		n.Variable.Restore(ctx)
+	}
+	for i, t := range n.RelationshipTypes {
+		if i == 0 {
+			ctx.Write(":")
+		} else {
+			ctx.Write("|")
+		}
+		t.Restore(ctx)
+	}
+
+	ctx.Write("*")
+	if n.MinHops > -1 {
+		ctx.Write(n.MinHops)
+	}
+	ctx.Write("..")
+	if n.MaxHops > -1 {
+		ctx.Write(n.MaxHops)
+	}
+
+	if n.Properties != nil {
+		n.Properties.Restore(ctx)
+	}
+	ctx.Write("]")
+}
+
 type PropertiesType byte
 
 const (
@@ -191,6 +280,15 @@ func (n *Properties) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *Properties) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case PropertiesMapLiteral:
+		n.MapLiteral.Restore(ctx)
+	case PropertiesParameter:
+		n.Parameter.Restore(ctx)
+	}
+}
+
 type PatternComprehension struct {
 	baseNode
 
@@ -215,4 +313,20 @@ func (n *PatternComprehension) Accept(v Visitor) (Node, bool) {
 	}
 	n.Expr.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *PatternComprehension) Restore(ctx *RestoreContext) {
+	ctx.Write("[")
+	if n.Variable != nil {
+		n.Variable.Restore(ctx)
+		ctx.Write(" = ")
+	}
+	n.PatternElement.Restore(ctx)
+	if n.Where != nil {
+		ctx.WriteKeyword(" WHERE")
+		n.Where.Restore(ctx)
+	}
+	ctx.Write(" | ")
+	n.Expr.Restore(ctx)
+	ctx.Write("]")
 }

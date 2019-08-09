@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/antlr/antlr4/runtime/Go/antlr"
@@ -174,19 +173,20 @@ func (v *ConvertVisitor) VisitUnwindClause(ctx *UnwindClauseContext) interface{}
 }
 
 func (v *ConvertVisitor) VisitUpdatingClause(ctx *UpdatingClauseContext) interface{} {
-	var n ast.Stmt
-	if ctx.CreateClause() != nil {
-		n = ctx.CreateClause().Accept(v).(*ast.CreateClause)
-	} else if ctx.MergeClause() != nil {
-		n = ctx.MergeClause().Accept(v).(*ast.MergeClause)
-	} else if ctx.SetClause() != nil {
-		n = ctx.SetClause().Accept(v).(*ast.SetClause)
-	} else if ctx.DeleteClause() != nil {
-		n = ctx.DeleteClause().Accept(v).(*ast.DeleteClause)
-	} else if ctx.RemoveClause() != nil {
-		n = ctx.RemoveClause().Accept(v).(*ast.RemoveClause)
+	switch {
+	case ctx.CreateClause() != nil:
+		return ctx.CreateClause().Accept(v).(*ast.CreateClause)
+	case ctx.MergeClause() != nil:
+		return ctx.MergeClause().Accept(v).(*ast.MergeClause)
+	case ctx.SetClause() != nil:
+		return ctx.SetClause().Accept(v).(*ast.SetClause)
+	case ctx.DeleteClause() != nil:
+		return ctx.DeleteClause().Accept(v).(*ast.DeleteClause)
+	case ctx.RemoveClause() != nil:
+		return ctx.RemoveClause().Accept(v).(*ast.RemoveClause)
+	default:
+		return nil
 	}
-	return n
 }
 
 func (v *ConvertVisitor) VisitCreateClause(ctx *CreateClauseContext) interface{} {
@@ -197,16 +197,16 @@ func (v *ConvertVisitor) VisitCreateClause(ctx *CreateClauseContext) interface{}
 
 func (v *ConvertVisitor) VisitSetClause(ctx *SetClauseContext) interface{} {
 	set := &ast.SetClause{}
-	var items []*ast.SetItemStmt
+	var items []*ast.SetItem
 	for _, item := range ctx.AllSetItem() {
-		items = append(items, item.Accept(v).(*ast.SetItemStmt))
+		items = append(items, item.Accept(v).(*ast.SetItem))
 	}
 	set.SetItems = items
 	return set
 }
 
 func (v *ConvertVisitor) VisitSetItem(ctx *SetItemContext) interface{} {
-	setItem := &ast.SetItemStmt{}
+	setItem := &ast.SetItem{}
 
 	if ctx.PropertyExpr() != nil {
 		setItem.Type = ast.SetItemProperty
@@ -248,16 +248,16 @@ func (v *ConvertVisitor) VisitDeleteClause(ctx *DeleteClauseContext) interface{}
 
 func (v *ConvertVisitor) VisitRemoveClause(ctx *RemoveClauseContext) interface{} {
 	removeClause := &ast.RemoveClause{}
-	var items []*ast.RemoveItemStmt
+	var items []*ast.RemoveItem
 	for _, item := range ctx.AllRemoveItem() {
-		items = append(items, item.Accept(v).(*ast.RemoveItemStmt))
+		items = append(items, item.Accept(v).(*ast.RemoveItem))
 	}
 	removeClause.RemoveItems = items
 	return removeClause
 }
 
 func (v *ConvertVisitor) VisitRemoveItem(ctx *RemoveItemContext) interface{} {
-	removeItem := &ast.RemoveItemStmt{}
+	removeItem := &ast.RemoveItem{}
 	if ctx.Variable() != nil {
 		removeItem.Type = ast.RemoveItemVariable
 		removeItem.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
@@ -357,9 +357,7 @@ func (v *ConvertVisitor) VisitNodeLabel(ctx *NodeLabelContext) interface{} {
 }
 
 func (v *ConvertVisitor) VisitLabelName(ctx *LabelNameContext) interface{} {
-	labelName := &ast.SchemaNameNode{}
-	labelName.Type = ast.SchemaNameSymbolicName
-	return labelName
+	return ctx.SchemaName().Accept(v).(*ast.SchemaNameNode)
 }
 
 func (v *ConvertVisitor) VisitPattern(ctx *PatternContext) interface{} {
@@ -375,7 +373,6 @@ func (v *ConvertVisitor) VisitPattern(ctx *PatternContext) interface{} {
 func (v *ConvertVisitor) VisitPatternPart(ctx *PatternPartContext) interface{} {
 	patternPart := &ast.PatternPart{}
 	if ctx.Variable() != nil {
-		patternPart.WithVariable = true
 		patternPart.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
 	}
 	patternPart.Element = ctx.
@@ -419,7 +416,6 @@ func (v *ConvertVisitor) VisitNodePattern(ctx *NodePatternContext) interface{} {
 	var labels []*ast.NodeLabelNode
 	if ctx.NodeLabels() != nil {
 		labelsCtx := ctx.NodeLabels().Accept(v).(*NodeLabelsContext)
-		fmt.Println(labelsCtx.AllNodeLabel())
 		for _, label := range labelsCtx.AllNodeLabel() {
 			labels = append(labels, label.Accept(v).(*ast.NodeLabelNode))
 		}
@@ -953,6 +949,7 @@ func (v *ConvertVisitor) VisitPropertyOrLabelsExpr(ctx *PropertyOrLabelsExprCont
 	for _, lookup := range ctx.AllPropertyLookup() {
 		lookups = append(lookups, lookup.Accept(v).(*ast.PropertyLookup))
 	}
+	propertyOrLabelsExpr.PropertyLookups = lookups
 	return propertyOrLabelsExpr
 }
 
@@ -1030,7 +1027,7 @@ func (v *ConvertVisitor) VisitAtom(ctx *AtomContext) interface{} {
 		atom.PatternElement = ctx.RelationshipsPattern().Accept(v).(*ast.PatternElement)
 	} else if ctx.ParenthesizedExpr() != nil {
 		atom.Type = ast.AtomParenthesizedExpr
-		atom.ParenthesizedExpr = ctx.ParenthesizedExpr().Accept(v).(*ParenthesizedExprContext).Expr().Accept(v).(ast.Expr)
+		atom.ParenthesizedExpr = ctx.ParenthesizedExpr().Accept(v).(ast.Expr)
 	} else if ctx.FunctionInvocation() != nil {
 		// TODO
 		panic("FunctionInvocation not support now")
@@ -1058,7 +1055,9 @@ func (v *ConvertVisitor) VisitRelationshipsPattern(ctx *RelationshipsPatternCont
 }
 
 func (v *ConvertVisitor) VisitParenthesizedExpr(ctx *ParenthesizedExprContext) interface{} {
-	return ctx
+	parenExpr := &ast.ParenExpr{}
+	parenExpr.Expr = ctx.Expr().Accept(v).(ast.Expr)
+	return parenExpr
 }
 
 func (v *ConvertVisitor) VisitFilterExpr(ctx *FilterExprContext) interface{} {
@@ -1098,18 +1097,23 @@ func (v *ConvertVisitor) VisitPatternComprehension(ctx *PatternComprehensionCont
 	return patternComprehension
 }
 
+func unquote(s string) string {
+	if s[0] == s[len(s)-1] &&
+		(s[0] == '\'' || s[0] == '"' || s[0] == '`') {
+		return s[1 : len(s)-1]
+	} else {
+		return s
+	}
+}
+
 func (v *ConvertVisitor) VisitLiteral(ctx *LiteralContext) interface{} {
 	literal := &ast.LiteralExpr{}
 	if ctx.NumberLiteral() != nil {
 		literal.Type = ast.LiteralNumber
 		literal.Number = ctx.NumberLiteral().Accept(v).(*ast.NumberLiteral)
 	} else if ctx.StringLiteral() != nil {
-		var err error
 		literal.Type = ast.LiteralString
-		literal.String, err = strconv.Unquote(ctx.StringLiteral().GetText())
-		if err != nil {
-			panic(err)
-		}
+		literal.String = unquote(ctx.StringLiteral().GetText())
 	} else if ctx.BooleanLiteral() != nil {
 		literal.Type = ast.LiteralBoolean
 		if ctx.BooleanLiteral().GetText() == "TRUE" {
@@ -1217,7 +1221,7 @@ func (v *ConvertVisitor) VisitDoubleLiteral(ctx *DoubleLiteralContext) interface
 func (v *ConvertVisitor) VisitParameter(ctx *ParameterContext) interface{} {
 	parameter := &ast.ParameterNode{}
 	if ctx.SymbolicName() != nil {
-		parameter.Type = ast.ParameterSymbolicname
+		parameter.Type = ast.ParameterSymbolicName
 		parameter.SymbolicName = ctx.SymbolicName().Accept(v).(*ast.SymbolicNameNode)
 	} else if ctx.DecimalInteger() != nil {
 		parameter.Type = ast.ParameterDecimalInteger

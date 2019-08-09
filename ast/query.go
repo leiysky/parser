@@ -30,6 +30,13 @@ func (n *CypherStmt) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *CypherStmt) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case CypherStmtQuery:
+		n.Query.Restore(ctx)
+	}
+}
+
 type QueryStmt struct {
 	baseStmt
 
@@ -46,6 +53,15 @@ func (n *QueryStmt) Accept(v Visitor) (Node, bool) {
 		c.Accept(v)
 	}
 	return v.Leave(n)
+}
+
+func (n *QueryStmt) Restore(ctx *RestoreContext) {
+	for i, c := range n.Clauses {
+		if i > 0 {
+			ctx.Write(" ")
+		}
+		c.Restore(ctx)
+	}
 }
 
 type UnionClause struct {
@@ -67,6 +83,16 @@ func (n *UnionClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *UnionClause) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("UNION ")
+	if n.All {
+		ctx.WriteKeyword("ALL ")
+	}
+	for _, c := range n.Clauses {
+		c.Restore(ctx)
+	}
+}
+
 type StandaloneCall struct {
 	baseNode
 }
@@ -80,94 +106,6 @@ func (n *StandaloneCall) Accept(v Visitor) (Node, bool) {
 	// TODO
 	return v.Leave(n)
 }
-
-// type SingleQueryStmtType int
-
-// const (
-// 	SingleQueryStmtSinglePart SingleQueryStmtType = iota
-// 	SingleQueryStmtMultiPart
-// )
-
-// type SingleQueryStmt struct {
-// 	baseStmt
-
-// 	Type       SingleQueryStmtType
-// 	SinglePart *SinglePartQueryStmt
-// 	MultiPart  *MultiPartQueryStmt
-// }
-
-// func (n *SingleQueryStmt) Accept(v Visitor) (Node, bool) {
-// 	newNode, skip := v.Enter(n)
-// 	if skip {
-// 		return v.Leave(n)
-// 	}
-// 	n = newNode.(*SingleQueryStmt)
-// 	switch n.Type {
-// 	case SingleQueryStmtSinglePart:
-// 		n.SinglePart.Accept(v)
-// 	case SingleQueryStmtMultiPart:
-// 		n.MultiPart.Accept(v)
-// 	}
-// 	return v.Leave(n)
-// }
-
-// type SinglePartQueryStmt struct {
-// 	baseStmt
-
-// 	ReadingClauses []StmtNode
-
-// 	// If length of UpdatingClauses is greater than 0 then there could be no ReturnClause
-// 	UpdatingClauses []StmtNode
-// 	Return          *ReturnClause
-// }
-
-// func (n *SinglePartQueryStmt) Accept(v Visitor) (Node, bool) {
-// 	newNode, skip := v.Enter(n)
-// 	if skip {
-// 		return v.Leave(n)
-// 	}
-// 	n = newNode.(*SinglePartQueryStmt)
-// 	for _, reading := range n.ReadingClauses {
-// 		reading.Accept(v)
-// 	}
-// 	for _, updating := range n.UpdatingClauses {
-// 		updating.Accept(v)
-// 	}
-// 	n.Return.Accept(v)
-// 	return v.Leave(n)
-// }
-
-// type MultiPartQueryStmt struct {
-// 	baseStmt
-
-// 	MultiPart  []*MultiPartQueryPartial
-// 	SinglePart *SinglePartQueryStmt
-// }
-
-// func (n *MultiPartQueryStmt) Accept(v Visitor) (Node, bool) {
-// 	newNode, skip := v.Enter(n)
-// 	if skip {
-// 		return v.Leave(n)
-// 	}
-// 	n = newNode.(*MultiPartQueryStmt)
-// 	for _, part := range n.MultiPart {
-// 		for _, reading := range part.Readings {
-// 			reading.Accept(v)
-// 		}
-// 		for _, updating := range part.Updatings {
-// 			updating.Accept(v)
-// 		}
-// 		part.With.Accept(v)
-// 	}
-// 	n.SinglePart.Accept(v)
-// 	return v.Leave(n)
-// }
-
-// type MultiPartQueryPartial struct {
-// 	Readings  []*ReadingClause
-// 	Updatings []*UpdatingClause
-// 	With      *WithClause
-// }
 
 type WithClause struct {
 	baseStmt
@@ -188,6 +126,18 @@ func (n *WithClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *WithClause) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("WITH ")
+	if n.Distinct {
+		ctx.WriteKeyword("DISTINCT ")
+	}
+	n.ReturnBody.Restore(ctx)
+	ctx.Write(" ")
+	if n.Where != nil {
+		n.Where.Restore(ctx)
+	}
+}
+
 type ReturnClause struct {
 	baseStmt
 
@@ -203,4 +153,12 @@ func (n *ReturnClause) Accept(v Visitor) (Node, bool) {
 	n = newNode.(*ReturnClause)
 	n.ReturnBody.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *ReturnClause) Restore(ctx *RestoreContext) {
+	ctx.Write("RETURN ")
+	if n.Distinct {
+		ctx.WriteKeyword("DISTINCT ")
+	}
+	n.ReturnBody.Restore(ctx)
 }

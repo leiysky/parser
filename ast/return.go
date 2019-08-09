@@ -30,6 +30,27 @@ func (n *ReturnBody) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *ReturnBody) Restore(ctx *RestoreContext) {
+	for i, item := range n.ReturnItems {
+		if i > 0 {
+			ctx.Write(", ")
+		}
+		item.Restore(ctx)
+	}
+	if n.OrderBy != nil {
+		ctx.Write(" ")
+		n.OrderBy.Restore(ctx)
+	}
+	if n.Skip != nil {
+		ctx.Write(" ")
+		n.Skip.Restore(ctx)
+	}
+	if n.Limit != nil {
+		ctx.Write(" ")
+		n.Limit.Restore(ctx)
+	}
+}
+
 type ReturnItem struct {
 	baseStmt
 
@@ -51,6 +72,14 @@ func (n *ReturnItem) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+func (n *ReturnItem) Restore(ctx *RestoreContext) {
+	n.Expr.Restore(ctx)
+	if n.As {
+		ctx.WriteKeyword(" AS ")
+		n.Variable.Restore(ctx)
+	}
+}
+
 type OrderClause struct {
 	baseStmt
 
@@ -67,6 +96,16 @@ func (n *OrderClause) Accept(v Visitor) (Node, bool) {
 		item.Accept(v)
 	}
 	return v.Leave(n)
+}
+
+func (n *OrderClause) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("ORDER BY ")
+	for i, item := range n.SortItems {
+		if i > 0 {
+			ctx.Write(", ")
+		}
+		item.Restore(ctx)
+	}
 }
 
 type SortType byte
@@ -91,4 +130,14 @@ func (n *SortItem) Accept(v Visitor) (Node, bool) {
 	n = newNode.(*SortItem)
 	n.Expr.Accept(v)
 	return v.Leave(n)
+}
+
+func (n *SortItem) Restore(ctx *RestoreContext) {
+	n.Expr.Restore(ctx)
+	switch n.Type {
+	case SortAscending:
+		ctx.WriteKeyword(" ASC")
+	case SortDescending:
+		ctx.WriteKeyword(" DESC")
+	}
 }
