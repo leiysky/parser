@@ -603,78 +603,146 @@ func (v *convertVisitor) VisitExpr(ctx *ExprContext) interface{} {
 }
 
 func (v *convertVisitor) VisitOrExpr(ctx *OrExprContext) interface{} {
-	orExpr := &ast.OrExpr{}
-	var exprs []*ast.XorExpr
-	for _, expr := range ctx.AllXorExpr() {
-		exprs = append(exprs, expr.Accept(v).(*ast.XorExpr))
+	if len(ctx.AllXorExpr()) == 1 {
+		return ctx.XorExpr(0).Accept(v)
 	}
-	orExpr.XorExprs = exprs
-	return orExpr
+	var exprs []ast.Expr
+	for _, expr := range ctx.AllXorExpr() {
+		exprs = append(exprs, expr.Accept(v).(ast.Expr))
+	}
+	binaryExpr := &ast.BinaryExpr{}
+	binaryExpr.L = exprs[0]
+	exprs = exprs[1:]
+	for i, expr := range exprs {
+		binaryExpr.Op = ast.OpOr
+		binaryExpr.R = expr
+		if i < len(exprs)-1 {
+			binaryExpr = &ast.BinaryExpr{
+				L: binaryExpr,
+			}
+		}
+	}
+	return binaryExpr
 }
 
 func (v *convertVisitor) VisitXorExpr(ctx *XorExprContext) interface{} {
-	xorExpr := &ast.XorExpr{}
-	var exprs []*ast.AndExpr
-	for _, expr := range ctx.AllAndExpr() {
-		exprs = append(exprs, expr.Accept(v).(*ast.AndExpr))
+	if len(ctx.AllAndExpr()) == 1 {
+		return ctx.AndExpr(0).Accept(v)
 	}
-	xorExpr.AndExprs = exprs
-	return xorExpr
+	var exprs []ast.Expr
+	for _, expr := range ctx.AllAndExpr() {
+		exprs = append(exprs, expr.Accept(v).(ast.Expr))
+	}
+	binaryExpr := &ast.BinaryExpr{}
+	binaryExpr.L = exprs[0]
+	exprs = exprs[1:]
+	for i, expr := range exprs {
+		binaryExpr.Op = ast.OpXor
+		binaryExpr.R = expr
+		if i < len(exprs)-1 {
+			binaryExpr = &ast.BinaryExpr{
+				L: binaryExpr,
+			}
+		}
+	}
+	return binaryExpr
 }
 
 func (v *convertVisitor) VisitAndExpr(ctx *AndExprContext) interface{} {
-	andExpr := &ast.AndExpr{}
-	var exprs []*ast.NotExpr
-	for _, expr := range ctx.AllNotExpr() {
-		exprs = append(exprs, expr.Accept(v).(*ast.NotExpr))
+	if len(ctx.AllNotExpr()) == 1 {
+		return ctx.NotExpr(0).Accept(v)
 	}
-	andExpr.NotExprs = exprs
-	return andExpr
+	var exprs []ast.Expr
+	for _, expr := range ctx.AllNotExpr() {
+		exprs = append(exprs, expr.Accept(v).(ast.Expr))
+	}
+	binaryExpr := &ast.BinaryExpr{}
+	binaryExpr.L = exprs[0]
+	exprs = exprs[1:]
+	for i, expr := range exprs {
+		binaryExpr.Op = ast.OpAnd
+		binaryExpr.R = expr
+		if i < len(exprs)-1 {
+			binaryExpr = &ast.BinaryExpr{
+				L: binaryExpr,
+			}
+		}
+	}
+	return binaryExpr
 }
 
 func (v *convertVisitor) VisitNotExpr(ctx *NotExprContext) interface{} {
-	notExpr := &ast.NotExpr{}
-	notExpr.ComparisonExpr = ctx.ComparisonExpr().Accept(v).(*ast.ComparisonExpr)
-	return notExpr
+	if len(ctx.AllNOT()) == 0 {
+		return ctx.ComparisonExpr().Accept(v)
+	}
+	unaryExpr := &ast.UnaryExpr{}
+	unaryExpr.V = ctx.ComparisonExpr().Accept(v).(ast.Expr)
+	for i := range ctx.AllNOT() {
+		unaryExpr.Op = ast.OpNot
+		if i < len(ctx.AllNOT())-1 {
+			unaryExpr = &ast.UnaryExpr{
+				V: unaryExpr,
+			}
+		}
+	}
+	return unaryExpr
+}
+
+// used for simplify parsing
+type partialComparisonExpr struct {
+	Type ast.OpType
+	Expr ast.Expr
 }
 
 func (v *convertVisitor) VisitComparisonExpr(ctx *ComparisonExprContext) interface{} {
-	comparisonExpr := &ast.ComparisonExpr{}
-	comparisonExpr.AddSubExpr = ctx.AddOrSubtractExpr().Accept(v).(*ast.AddSubExpr)
-	var exprs []*ast.PartialComparisonExpr
-	for _, expr := range ctx.AllPartialComparisonExpr() {
-		exprs = append(exprs, expr.Accept(v).(*ast.PartialComparisonExpr))
+	if len(ctx.AllPartialComparisonExpr()) == 0 {
+		return ctx.AddOrSubtractExpr().Accept(v)
 	}
-	comparisonExpr.PartialComparisonExprs = exprs
-	return comparisonExpr
+	expr := ctx.AddOrSubtractExpr().Accept(v).(ast.Expr)
+	var partialExprs []partialComparisonExpr
+	for _, expr := range ctx.AllPartialComparisonExpr() {
+		partialExprs = append(partialExprs, expr.Accept(v).(partialComparisonExpr))
+	}
+
+	binaryExpr := &ast.BinaryExpr{}
+	binaryExpr.L = expr
+	for i, expr := range partialExprs {
+		binaryExpr.Op = expr.Type
+		binaryExpr.R = expr.Expr
+		if i < len(partialExprs)-1 {
+			binaryExpr = &ast.BinaryExpr{
+				L: binaryExpr,
+			}
+		}
+	}
+	return binaryExpr
 }
 
 func (v *convertVisitor) VisitPartialComparisonExpr(ctx *PartialComparisonExprContext) interface{} {
-	partialComparisonExpr := &ast.PartialComparisonExpr{}
+	partialComparisonExpr := partialComparisonExpr{}
 	comp := ctx.GetChild(0).(antlr.TerminalNode)
 	switch comp.GetText() {
 	case "=":
-		partialComparisonExpr.Type = ast.PartialComparisonEQ
+		partialComparisonExpr.Type = ast.OpEQ
 	case "<>":
-		partialComparisonExpr.Type = ast.PartialComparisonNE
+		partialComparisonExpr.Type = ast.OpNE
 	case "<":
-		partialComparisonExpr.Type = ast.PartialComparisonLT
+		partialComparisonExpr.Type = ast.OpLT
 	case ">":
-		partialComparisonExpr.Type = ast.PartialComparisonGT
+		partialComparisonExpr.Type = ast.OpGT
 	case "<=":
-		partialComparisonExpr.Type = ast.PartialComparisonLTE
+		partialComparisonExpr.Type = ast.OpLTE
 	case ">=":
-		partialComparisonExpr.Type = ast.PartialComparisonGTE
+		partialComparisonExpr.Type = ast.OpGTE
 	}
-	partialComparisonExpr.AddSubExpr = ctx.AddOrSubtractExpr().Accept(v).(*ast.AddSubExpr)
+	partialComparisonExpr.Expr = ctx.AddOrSubtractExpr().Accept(v).(ast.Expr)
 	return partialComparisonExpr
 }
 
 func (v *convertVisitor) VisitAddOrSubtractExpr(ctx *AddOrSubtractExprContext) interface{} {
-	addSubExpr := &ast.AddSubExpr{}
-	exprs := ctx.AllMultiplyDivideModuloExpr()
-	addSubExpr.LExpr = exprs[0].Accept(v).(*ast.MulDivModExpr)
-	exprs = exprs[1:]
+	if len(ctx.AllMultiplyDivideModuloExpr()) == 1 {
+		return ctx.MultiplyDivideModuloExpr(0).Accept(v)
+	}
 	var ops []ast.OpType
 	for _, child := range ctx.GetChildren() {
 		if n, ok := child.GetPayload().(*antlr.CommonToken); ok && n.GetTokenType() != CypherLexerSP {
@@ -686,20 +754,30 @@ func (v *convertVisitor) VisitAddOrSubtractExpr(ctx *AddOrSubtractExprContext) i
 			}
 		}
 	}
-	var mulDivModExprs []*ast.MulDivModExpr
-	for _, expr := range exprs {
-		mulDivModExprs = append(mulDivModExprs, expr.Accept(v).(*ast.MulDivModExpr))
+	var exprs []ast.Expr
+	for _, expr := range ctx.AllMultiplyDivideModuloExpr() {
+		exprs = append(exprs, expr.Accept(v).(ast.Expr))
 	}
-	addSubExpr.RExprs = mulDivModExprs
-	addSubExpr.Ops = ops
-	return addSubExpr
+
+	binaryExpr := &ast.BinaryExpr{}
+	binaryExpr.L = exprs[0]
+	exprs = exprs[1:]
+	for i, expr := range exprs {
+		binaryExpr.Op = ops[i]
+		binaryExpr.R = expr
+		if i < len(exprs)-1 {
+			binaryExpr = &ast.BinaryExpr{
+				L: binaryExpr,
+			}
+		}
+	}
+	return binaryExpr
 }
 
 func (v *convertVisitor) VisitMultiplyDivideModuloExpr(ctx *MultiplyDivideModuloExprContext) interface{} {
-	mulDivModExpr := &ast.MulDivModExpr{}
-	exprs := ctx.AllPowerOfExpr()
-	mulDivModExpr.LExpr = exprs[0].Accept(v).(*ast.PowerOfExpr)
-	exprs = exprs[1:]
+	if len(ctx.AllPowerOfExpr()) == 1 {
+		return ctx.PowerOfExpr(0).Accept(v)
+	}
 	var ops []ast.OpType
 	for _, child := range ctx.GetChildren() {
 		if n, ok := child.GetPayload().(*antlr.CommonToken); ok && n.GetTokenType() != CypherLexerSP {
@@ -713,47 +791,108 @@ func (v *convertVisitor) VisitMultiplyDivideModuloExpr(ctx *MultiplyDivideModulo
 			}
 		}
 	}
-	var powerOfExprs []*ast.PowerOfExpr
-	for _, expr := range exprs {
-		powerOfExprs = append(powerOfExprs, expr.Accept(v).(*ast.PowerOfExpr))
+	var exprs []ast.Expr
+	for _, expr := range ctx.AllPowerOfExpr() {
+		exprs = append(exprs, expr.Accept(v).(ast.Expr))
 	}
-	mulDivModExpr.RExprs = powerOfExprs
-	mulDivModExpr.Ops = ops
-	return mulDivModExpr
+
+	binaryExpr := &ast.BinaryExpr{}
+	binaryExpr.L = exprs[0]
+	exprs = exprs[1:]
+	for i, expr := range exprs {
+		binaryExpr.Op = ops[i]
+		binaryExpr.R = expr
+		if i < len(exprs)-1 {
+			binaryExpr = &ast.BinaryExpr{
+				L: binaryExpr,
+			}
+		}
+	}
+	return binaryExpr
 }
 
 func (v *convertVisitor) VisitPowerOfExpr(ctx *PowerOfExprContext) interface{} {
-	powerOfExpr := &ast.PowerOfExpr{}
-	var exprs []*ast.UnaryAddSubExpr
-	for _, expr := range ctx.AllUnaryAddOrSubtractExpr() {
-		exprs = append(exprs, expr.Accept(v).(*ast.UnaryAddSubExpr))
+	if len(ctx.AllUnaryAddOrSubtractExpr()) == 1 {
+		return ctx.UnaryAddOrSubtractExpr(0).Accept(v)
 	}
-	powerOfExpr.UnaryAddSubExprs = exprs
-	return powerOfExpr
+	var exprs []ast.Expr
+	for _, expr := range ctx.AllUnaryAddOrSubtractExpr() {
+		exprs = append(exprs, expr.Accept(v).(ast.Expr))
+	}
+
+	binaryExpr := &ast.BinaryExpr{}
+	binaryExpr.L = exprs[0]
+	exprs = exprs[1:]
+	for i, expr := range exprs {
+		binaryExpr.Op = ast.OpPow
+		binaryExpr.R = expr
+		if i < len(exprs)-1 {
+			binaryExpr = &ast.BinaryExpr{
+				L: binaryExpr,
+			}
+		}
+	}
+	return binaryExpr
 }
 
 func (v *convertVisitor) VisitUnaryAddOrSubtractExpr(ctx *UnaryAddOrSubtractExprContext) interface{} {
-	unaryAddSub := &ast.UnaryAddSubExpr{}
+	if len(ctx.GetTokens(13))+len(ctx.GetTokens(14)) == 0 {
+		return ctx.StringListNullOperatorExpr().Accept(v)
+	}
 	var ops []string
 	for _, child := range ctx.GetChildren() {
 		if n, ok := child.GetPayload().(*antlr.CommonToken); ok && n.GetTokenType() != CypherLexerSP {
 			ops = append(ops, n.GetText())
 		}
 	}
-	var isNegative bool
-	for _, op := range ops {
-		if op == "-" {
-			isNegative = !isNegative
+
+	unaryExpr := &ast.UnaryExpr{}
+	unaryExpr.V = ctx.StringListNullOperatorExpr().Accept(v).(ast.Expr)
+	for i, op := range ops {
+		if op == "+" {
+			unaryExpr.Op = ast.OpPlus
+		} else if op == "-" {
+			unaryExpr.Op = ast.OpMinus
+		}
+		if i < len(ops)-1 {
+			unaryExpr = &ast.UnaryExpr{
+				V: unaryExpr,
+			}
 		}
 	}
-	unaryAddSub.IsNegative = isNegative
-	return unaryAddSub
+	return unaryExpr
 }
 
 func (v *convertVisitor) VisitStringListNullOperatorExpr(ctx *StringListNullOperatorExprContext) interface{} {
-	stringListNullExpr := &ast.StringListNullExpr{}
-	// TODO
-	return stringListNullExpr
+	if len(ctx.AllStringOperatorExpr())+len(ctx.AllListOperatorExpr())+len(ctx.AllNullOperatorExpr()) == 0 {
+		return ctx.PropertyOrLabelsExpr().Accept(v)
+	}
+
+	predicationExpr := &ast.PredicationExpr{}
+	for i, child := range ctx.GetChildren() {
+		if i == 0 {
+			continue
+		}
+		switch expr := child.GetPayload().(type) {
+		case StringOperatorExprContext:
+			predicationExpr.Type = ast.PredicationStringOp
+			predicationExpr.Expr = expr.Accept(v).(ast.Expr)
+		case ListOperatorExprContext:
+			predicationExpr.Type = ast.PredicationListOp
+			predicationExpr.Expr = expr.Accept(v).(ast.Expr)
+		case NullOperatorExprContext:
+			predicationExpr.Type = ast.PredicationNullOp
+			predicationExpr.Expr = expr.Accept(v).(ast.Expr)
+		}
+
+		if i < len(ctx.GetChildren())-2 {
+			predicationExpr = &ast.PredicationExpr{
+				Expr: predicationExpr,
+			}
+		}
+	}
+
+	return predicationExpr
 }
 
 func (v *convertVisitor) VisitListOperatorExpr(ctx *ListOperatorExprContext) interface{} {
@@ -761,8 +900,8 @@ func (v *convertVisitor) VisitListOperatorExpr(ctx *ListOperatorExprContext) int
 	if ctx.PropertyOrLabelsExpr() != nil {
 		listOperatorExpr.InExpr = ctx.PropertyOrLabelsExpr().Accept(v).(*ast.PropertyOrLabelsExpr)
 	} else if len(ctx.GetTokens(12)) > 0 {
-		listOperatorExpr.RangeExprs[0] = ctx.Expr(0).Accept(v).(ast.Expr)
-		listOperatorExpr.RangeExprs[1] = ctx.Expr(1).Accept(v).(ast.Expr)
+		listOperatorExpr.LowerBound = ctx.Expr(0).Accept(v).(ast.Expr)
+		listOperatorExpr.UpperBound = ctx.Expr(1).Accept(v).(ast.Expr)
 	} else if len(ctx.GetTokens(12)) == 0 {
 		expr := ctx.Expr(0).Accept(v).(ast.Expr)
 		listOperatorExpr.SingleExpr = expr
@@ -779,7 +918,7 @@ func (v *convertVisitor) VisitStringOperatorExpr(ctx *StringOperatorExprContext)
 	} else if ctx.CONTAINS() != nil {
 		stringOperatorExpr.Type = ast.StringOperationContains
 	}
-	stringOperatorExpr.PropertyOrLabelsExpr = ctx.PropertyOrLabelsExpr().Accept(v).(*ast.PropertyOrLabelsExpr)
+	stringOperatorExpr.Expr = ctx.PropertyOrLabelsExpr().Accept(v).(*ast.PropertyOrLabelsExpr)
 	return stringOperatorExpr
 }
 
@@ -792,6 +931,9 @@ func (v *convertVisitor) VisitNullOperatorExpr(ctx *NullOperatorExprContext) int
 }
 
 func (v *convertVisitor) VisitPropertyOrLabelsExpr(ctx *PropertyOrLabelsExprContext) interface{} {
+	if len(ctx.AllPropertyLookup()) == 0 && ctx.NodeLabels() == nil {
+		return ctx.Atom().Accept(v)
+	}
 	propertyOrLabelsExpr := &ast.PropertyOrLabelsExpr{}
 	propertyOrLabelsExpr.Atom = ctx.Atom().Accept(v).(*ast.Atom)
 	if ctx.NodeLabels() != nil {
@@ -850,7 +992,7 @@ func (v *convertVisitor) VisitAtom(ctx *AtomContext) interface{} {
 	atom := &ast.Atom{}
 	if ctx.Literal() != nil {
 		atom.Type = ast.AtomLiteral
-		atom.Literal = ctx.Literal().Accept(v).(*ast.LiteralNode)
+		atom.Literal = ctx.Literal().Accept(v).(*ast.LiteralExpr)
 	} else if ctx.Parameter() != nil {
 		atom.Type = ast.AtomParameter
 		atom.Parameter = ctx.Parameter().Accept(v).(*ast.ParameterNode)
@@ -951,7 +1093,7 @@ func (v *convertVisitor) VisitPatternComprehension(ctx *PatternComprehensionCont
 }
 
 func (v *convertVisitor) VisitLiteral(ctx *LiteralContext) interface{} {
-	literal := &ast.LiteralNode{}
+	literal := &ast.LiteralExpr{}
 	if ctx.NumberLiteral() != nil {
 		literal.Type = ast.LiteralNumber
 		literal.Number = ctx.NumberLiteral().Accept(v).(*ast.NumberLiteral)

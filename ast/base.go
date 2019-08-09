@@ -25,18 +25,18 @@ type baseExpr struct {
 
 func (n *baseExpr) exprNode() {}
 
-type Expression struct {
-	baseExpr
+// type Expression struct {
+// 	baseExpr
 
-	OrExpr *OrExpr
-}
+// 	OrExpr *OrExpr
+// }
 
-func (n *Expression) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*Expression)
-	n.OrExpr.Accept(v)
-	return v.Leave(n)
-}
+// func (n *Expression) Accept(v Visitor) (Node, bool) {
+// 	newNode, skip := v.Enter(n)
+// 	if skip {
+// 		return v.Leave(n)
+// 	}
+// 	n = newNode.(*Expression)
+// 	n.OrExpr.Accept(v)
+// 	return v.Leave(n)
+// }

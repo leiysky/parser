@@ -1,5 +1,17 @@
 package ast
 
+var (
+	_ Expr = &BinaryExpr{}
+	_ Expr = &UnaryExpr{}
+	_ Expr = &PredicationExpr{}
+	_ Expr = &Atom{}
+	_ Expr = &PropertyExpr{}
+	_ Expr = &PropertyOrLabelsExpr{}
+	_ Expr = &LiteralExpr{}
+)
+
+// PropertyExpr represents a property lookup expression like `a.b.c`.
+// Different from PropertyOrLabelsExpr, it has at least one PropertyLookup.
 type PropertyExpr struct {
 	baseExpr
 
@@ -7,6 +19,7 @@ type PropertyExpr struct {
 	Lookups []*PropertyLookup
 }
 
+// Accept implements Node interface
 func (n *PropertyExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
@@ -20,225 +33,141 @@ func (n *PropertyExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type OrExpr struct {
+// BinaryExpr represents a binary expression with left expression, right expression and an operator.
+type BinaryExpr struct {
 	baseExpr
 
-	XorExprs []*XorExpr
+	Op OpType
+	L  Expr
+	R  Expr
 }
 
-func (n *OrExpr) Accept(v Visitor) (Node, bool) {
+// Accept implements Node interface
+func (n *BinaryExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
 		return v.Leave(n)
 	}
-	n = newNode.(*OrExpr)
-	for _, expr := range n.XorExprs {
-		expr.Accept(v)
-	}
+	n = newNode.(*BinaryExpr)
+	n.L.Accept(v)
+	n.R.Accept(v)
 	return v.Leave(n)
 }
 
-type XorExpr struct {
+// UnaryExpr represents a unary expression with expression and an operator.
+type UnaryExpr struct {
 	baseExpr
 
-	AndExprs []*AndExpr
+	Op OpType
+	V  Expr
 }
 
-func (n *XorExpr) Accept(v Visitor) (Node, bool) {
+// Accept implements Node interface
+func (n *UnaryExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
 		return v.Leave(n)
 	}
-	n = newNode.(*XorExpr)
-	for _, expr := range n.AndExprs {
-		expr.Accept(v)
-	}
+	n = newNode.(*UnaryExpr)
+	n.V.Accept(v)
 	return v.Leave(n)
 }
 
-type AndExpr struct {
-	baseExpr
+// PredicationType represents types of PredicationExpr
+type PredicationType byte
 
-	NotExprs []*NotExpr
-}
-
-func (n *AndExpr) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*AndExpr)
-	for _, expr := range n.NotExprs {
-		expr.Accept(v)
-	}
-	return v.Leave(n)
-}
-
-type NotExpr struct {
-	baseExpr
-
-	ComparisonExpr *ComparisonExpr
-}
-
-func (n *NotExpr) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*NotExpr)
-	n.ComparisonExpr.Accept(v)
-	return v.Leave(n)
-}
-
-type ComparisonExpr struct {
-	baseExpr
-
-	AddSubExpr             *AddSubExpr
-	PartialComparisonExprs []*PartialComparisonExpr
-}
-
-func (n *ComparisonExpr) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*ComparisonExpr)
-	n.AddSubExpr.Accept(v)
-	for _, partial := range n.PartialComparisonExprs {
-		partial.Accept(v)
-	}
-	return v.Leave(n)
-}
-
-type PartialComparisonType int
-
+// There are 3 kinds of predication expression.
 const (
-	PartialComparisonEQ PartialComparisonType = iota
-	PartialComparisonNE
-	PartialComparisonLT
-	PartialComparisonGT
-	PartialComparisonLTE
-	PartialComparisonGTE
+	PredicationStringOp PredicationType = iota
+	PredicationListOp
+	PredicationNullOp
 )
 
-type PartialComparisonExpr struct {
+// PredicationExpr represents a expression with boolean value but not logical operation.
+type PredicationExpr struct {
 	baseExpr
 
-	Type       PartialComparisonType
-	AddSubExpr *AddSubExpr
+	Type PredicationType
+	Expr Expr
 }
 
-func (n *PartialComparisonExpr) Accept(v Visitor) (Node, bool) {
+// Accept implements Node interface
+func (n *PredicationExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
 		return v.Leave(n)
 	}
-	n = newNode.(*PartialComparisonExpr)
-	n.AddSubExpr.Accept(v)
+	n = newNode.(*PredicationExpr)
+	n.Expr.Accept(v)
 	return v.Leave(n)
 }
 
-type OpType int
+// OpType represents operator type of expression
+type OpType byte
 
+// OpTypes
 const (
 	OpAdd OpType = iota
 	OpSub
 	OpMul
 	OpDiv
 	OpMod
+	OpPow
+	OpPlus  // positive
+	OpMinus // negative
+	OpEQ
+	OpNE
+	OpLT
+	OpGT
+	OpLTE
+	OpGTE
+	OpOr
+	OpAnd
+	OpXor
+	OpNot
 )
 
-type AddSubExpr struct {
-	baseExpr
-
-	// An AddSubExpr starts with a LExpr, and has arbitrary number of RExprs
-	LExpr *MulDivModExpr
-	// An Op is combined with a RExpr, in AddSubExpr there are only OpAdd or OpSub Ops
-	// ASSERT: len(Ops) == len(RExprs) && Op[n] -> RExprs[n]
-	Ops    []OpType
-	RExprs []*MulDivModExpr
-}
-
-func (n *AddSubExpr) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
+// String implements fmt.Stringer interface
+func (op OpType) String() string {
+	switch op {
+	case OpAdd, OpPlus:
+		return "+"
+	case OpSub, OpMinus:
+		return "-"
+	case OpMul:
+		return "*"
+	case OpDiv:
+		return "/"
+	case OpMod:
+		return "%"
+	case OpPow:
+		return "^"
+	case OpEQ:
+		return "="
+	case OpNE:
+		return "<>"
+	case OpLT:
+		return "<"
+	case OpGT:
+		return ">"
+	case OpLTE:
+		return "<="
+	case OpGTE:
+		return ">="
+	case OpOr:
+		return "OR"
+	case OpAnd:
+		return "AND"
+	case OpXor:
+		return "XOR"
+	case OpNot:
+		return "NOT"
+	default:
+		return "<unknown>"
 	}
-	n = newNode.(*AddSubExpr)
-	n.LExpr.Accept(v)
-	for _, expr := range n.RExprs {
-		expr.Accept(v)
-	}
-	return v.Leave(n)
 }
 
-type MulDivModExpr struct {
-	baseExpr
-
-	// An MulDivModExpr starts with a LExpr, and has arbitrary number of RExprs
-	LExpr *PowerOfExpr
-	// An Op is combined with a RExpr, in MulDivModExpr there are OpMul ,OpDiv or OpMod Ops
-	// ASSERT: len(Ops) == len(RExprs) && Op[n] -> RExprs[n]
-	Ops    []OpType
-	RExprs []*PowerOfExpr
-}
-
-func (n *MulDivModExpr) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*MulDivModExpr)
-	for _, expr := range n.RExprs {
-		expr.Accept(v)
-	}
-	return v.Leave(n)
-}
-
-type PowerOfExpr struct {
-	baseExpr
-
-	UnaryAddSubExprs []*UnaryAddSubExpr
-}
-
-func (n *PowerOfExpr) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*PowerOfExpr)
-	for _, expr := range n.UnaryAddSubExprs {
-		expr.Accept(v)
-	}
-	return v.Leave(n)
-}
-
-type UnaryAddSubExpr struct {
-	baseExpr
-
-	IsNegative bool
-	SLN        *StringListNullExpr
-}
-
-func (n *UnaryAddSubExpr) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*UnaryAddSubExpr)
-	n.SLN.Accept(v)
-	return v.Leave(n)
-}
-
-type StringListNullExpr struct {
-	baseExpr
-
-	PropertyOrLabelsExpr *PropertyOrLabelsExpr
-	// elements would be `*StringOperationExpr`, `*ListOperationType` or `NullOperationType`
-	SLNs []interface{}
-}
-
-type StringOperationType int
+type StringOperationType byte
 
 const (
 	StringOperationStartsWith StringOperationType = iota
@@ -249,8 +178,8 @@ const (
 type StringOperationExpr struct {
 	baseExpr
 
-	Type                 StringOperationType
-	PropertyOrLabelsExpr *PropertyOrLabelsExpr
+	Type StringOperationType
+	Expr *PropertyOrLabelsExpr
 }
 
 func (n *StringOperationExpr) Accept(v Visitor) (Node, bool) {
@@ -259,11 +188,11 @@ func (n *StringOperationExpr) Accept(v Visitor) (Node, bool) {
 		return v.Leave(n)
 	}
 	n = newNode.(*StringOperationExpr)
-	n.PropertyOrLabelsExpr.Accept(v)
+	n.Expr.Accept(v)
 	return v.Leave(n)
 }
 
-type ListOperationType int
+type ListOperationType byte
 
 const (
 	ListOperationIn ListOperationType = iota
@@ -277,7 +206,8 @@ type ListOperationExpr struct {
 	InExpr     *PropertyOrLabelsExpr
 	SingleExpr Expr
 	// RangeExprs[0] is lower bound, RangeExprs[1] is upper bound
-	RangeExprs [2]Expr
+	LowerBound Expr
+	UpperBound Expr
 }
 
 func (n *ListOperationExpr) Accept(v Visitor) (Node, bool) {
@@ -332,7 +262,7 @@ func (n *PropertyOrLabelsExpr) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type AtomType int
+type AtomType byte
 
 const (
 	AtomLiteral AtomType = iota
@@ -352,10 +282,10 @@ const (
 )
 
 type Atom struct {
-	Node
+	baseExpr
 
 	Type                 AtomType
-	Literal              *LiteralNode
+	Literal              *LiteralExpr
 	Parameter            *ParameterNode
 	CaseExpr             *CaseExpr
 	ListComprehension    *ListComprehension
