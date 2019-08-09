@@ -1,6 +1,6 @@
 package ast
 
-type CypherStmtType int
+type CypherStmtType byte
 
 const (
 	CypherStmtQuery CypherStmtType = iota

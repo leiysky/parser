@@ -92,7 +92,7 @@ func (n *NodePattern) Accept(v Visitor) (Node, bool) {
 }
 
 // RelationshipType represents types of Relationships
-type RelationshipType int
+type RelationshipType byte
 
 const (
 	// RelationshipLeft represents the Relationship only points to left
@@ -161,7 +161,7 @@ func (n *RelationshipDetail) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type PropertiesType int
+type PropertiesType byte
 
 const (
 	PropertiesMapLiteral PropertiesType = iota

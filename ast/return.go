@@ -69,7 +69,7 @@ func (n *OrderClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type SortType int
+type SortType byte
 
 const (
 	SortAscending SortType = iota

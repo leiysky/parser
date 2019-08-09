@@ -1,6 +1,6 @@
 package ast
 
-type SchemaNameType int
+type SchemaNameType byte
 
 const (
 	SchemaNameSymbolicName SchemaNameType = iota
@@ -31,7 +31,7 @@ func (n *SchemaNameNode) Accept(v Visitor) (Node, bool) {
 }
 
 // SymbolicNameType is enum of SymbolicNameNode types
-type SymbolicNameType int
+type SymbolicNameType byte
 
 // SymbolicNameNode types
 const (
@@ -109,7 +109,7 @@ func (n *NodeLabelNode) Accept(v Visitor) (Node, bool) {
 }
 
 type DecimalInteger = int
-type ParameterType int
+type ParameterType byte
 
 const (
 	ParameterSymbolicname ParameterType = iota
@@ -139,7 +139,7 @@ func (n *ParameterNode) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type LiteralType int
+type LiteralType byte
 
 const (
 	LiteralNumber LiteralType = iota
@@ -150,8 +150,8 @@ const (
 	LiteralList
 )
 
-type LiteralNode struct {
-	baseNode
+type LiteralExpr struct {
+	baseExpr
 
 	Type    LiteralType
 	Number  *NumberLiteral
@@ -161,12 +161,12 @@ type LiteralNode struct {
 	List    *ListLiteral
 }
 
-func (n *LiteralNode) Accept(v Visitor) (Node, bool) {
+func (n *LiteralExpr) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
 		return v.Leave(n)
 	}
-	n = newNode.(*LiteralNode)
+	n = newNode.(*LiteralExpr)
 	switch n.Type {
 	case LiteralNumber:
 		n.Number.Accept(v)
@@ -178,7 +178,7 @@ func (n *LiteralNode) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type NumberLiteralType int
+type NumberLiteralType byte
 
 const (
 	NumberLiteralInteger NumberLiteralType = iota

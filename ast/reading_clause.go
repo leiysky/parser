@@ -1,7 +1,7 @@
 package ast
 
 // ReadingClauseType represents types of ReadingClause
-type ReadingClauseType int
+type ReadingClauseType byte
 
 // Values of ReadingClauseType
 const (

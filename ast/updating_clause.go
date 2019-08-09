@@ -1,6 +1,6 @@
 package ast
 
-type UpdatingClauseType int
+type UpdatingClauseType byte
 
 const (
 	UpdatingClauseCreate UpdatingClauseType = iota
@@ -76,7 +76,7 @@ func (n *MergeClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type MergeActionType int
+type MergeActionType byte
 
 const (
 	MergeActionCreate MergeActionType = iota
@@ -121,7 +121,7 @@ func (n *SetClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type SetItemType int
+type SetItemType byte
 
 const (
 	SetItemProperty SetItemType = iota
@@ -201,7 +201,7 @@ func (n *RemoveClause) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type RemoveItemType int
+type RemoveItemType byte
 
 const (
 	RemoveItemVariable RemoveItemType = iota
