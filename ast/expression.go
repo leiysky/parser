@@ -428,7 +428,7 @@ func (n *Atom) Restore(ctx *RestoreContext) {
 	case AtomCase:
 		n.CaseExpr.Restore(ctx)
 	case AtomCount:
-		ctx.WriteKeyword("COUNT (*)")
+		ctx.WriteKeyword("COUNT(*)")
 	case AtomList:
 		n.ListComprehension.Restore(ctx)
 	case AtomPatternComprehension:

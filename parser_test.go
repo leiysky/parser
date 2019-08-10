@@ -33,6 +33,7 @@ var cases = []testCase{
 	{"match (n:Label)-[r:Type *1..2 {hello:'world'}]->() return *", true, "MATCH (`n`:Label)-[`r`:Type*1..2{hello: 'world'}]->() RETURN *"},
 	{"with n as n, a as a create (n)-[]-(a)", true, "WITH `n` AS `n`, `a` AS `a` CREATE (`n`)-[*1..1]-(`a`)"},
 	{"match (n) where n.name > 1 AND 'abc' = 2 OR 1.2 <> -2 return n", true, "MATCH (`n`) WHERE `n`.`name` > 1 AND 'abc' = 2 OR 1.200000 <> -2 RETURN `n`"},
+	{"match (n) return count(*)", true, "MATCH (`n`) RETURN COUNT(*)"},
 }
 
 func runTestCase(t *testing.T, cases []testCase) {
