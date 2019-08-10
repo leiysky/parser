@@ -269,6 +269,7 @@ const (
 	NumberLiteralDouble
 )
 
+// NumberLiteral represents literal value of number.
 type NumberLiteral struct {
 	baseNode
 
@@ -277,6 +278,7 @@ type NumberLiteral struct {
 	Double  float64
 }
 
+// Accept imlements ast.Node interface
 func (n *NumberLiteral) Accept(v Visitor) (Node, bool) {
 	newNode, skip := v.Enter(n)
 	if skip {
@@ -286,12 +288,14 @@ func (n *NumberLiteral) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+// Restore would restore NumberLiteral value.
+// It will use default format for int and float64
 func (n *NumberLiteral) Restore(ctx *RestoreContext) {
 	switch n.Type {
 	case NumberLiteralInteger:
-		ctx.Write(n.Integer)
+		ctx.Writef("%d", n.Integer)
 	case NumberLiteralDouble:
-		ctx.Write(n.Double)
+		ctx.Writef("%f", n.Double)
 	}
 }
 

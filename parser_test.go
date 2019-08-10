@@ -31,6 +31,8 @@ type testCase struct {
 var cases = []testCase{
 	{"match (n) return n", true, "MATCH (`n`) RETURN `n`"},
 	{"match (n:Label)-[r:Type *1..2 {hello:'world'}]->() return *", true, "MATCH (`n`:Label)-[`r`:Type*1..2{hello: 'world'}]->() RETURN *"},
+	{"with n as n, a as a create (n)-[]-(a)", true, "WITH `n` AS `n`, `a` AS `a` CREATE (`n`)-[*1..1]-(`a`)"},
+	{"match (n) where n.name > 1 AND 'abc' = 2 OR 1.2 <> -2 return n", true, "MATCH (`n`) WHERE `n`.`name` > 1 AND 'abc' = 2 OR 1.200000 <> -2 RETURN `n`"},
 }
 
 func runTestCase(t *testing.T, cases []testCase) {
@@ -87,6 +89,7 @@ func (v *testVisitor) VisitExpr(expr ast.Expr) {
 }
 
 func TestParser(t *testing.T) {
+	t.Skip()
 	parser := New()
 	parser.Parse(`
 MATCH (n)-[:Label *0123]-()
@@ -96,6 +99,7 @@ RETURN n`)
 }
 
 func TestMultiPartQuery(t *testing.T) {
+	t.Skip()
 	parser := New()
 	parser.Parse(`
 MATCH (n)
@@ -107,6 +111,7 @@ RETURN n
 }
 
 func TestExpression(t *testing.T) {
+	t.Skip()
 	parser := New()
 	stmt := parser.Parse(`
 	MATCH (n:Label1:Label2)-[r:Type1|Type2*1..2{name:'hello'}]->(n1)
