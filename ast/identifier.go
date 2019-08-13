@@ -13,6 +13,10 @@
 
 package ast
 
+import (
+	"strings"
+)
+
 type SchemaNameType byte
 
 const (
@@ -147,6 +151,14 @@ type NodeLabelNode struct {
 	baseNode
 
 	LabelName *SchemaNameNode
+}
+
+// NodeLabelNode is actually a string token
+func (n *NodeLabelNode) String() string {
+	var str strings.Builder
+	ctx := NewRestoreContext(&str)
+	n.LabelName.Restore(ctx)
+	return str.String()
 }
 
 func (n *NodeLabelNode) Accept(v Visitor) (Node, bool) {
