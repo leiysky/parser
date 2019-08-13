@@ -71,12 +71,9 @@ type PatternElement struct {
 	baseNode
 
 	// Amount of Relationships is the same as that of Nodes
-	// The pattern sequence should be (n is `len(Relationships)` also `len(Nodes)`):
-	// StartNode, Relationships[0], Nodes[0], ... , Relationships[n-1], Nodes[n-1]
-	StartNode     *NodePattern
+	// Nodes[i], Relationships[i], Nodes[i+1]...
 	Relationships []*RelationshipPattern
-	// Nodes represents NodePatterns exclude StartNode
-	Nodes []*NodePattern
+	Nodes         []*NodePattern
 }
 
 func (n *PatternElement) Accept(v Visitor) (Node, bool) {
@@ -85,22 +82,21 @@ func (n *PatternElement) Accept(v Visitor) (Node, bool) {
 		return v.Leave(n)
 	}
 	n = newNode.(*PatternElement)
-	n.StartNode.Accept(v)
-	for _, rel := range n.Relationships {
-		rel.Accept(v)
+	for i := range n.Relationships {
+		n.Nodes[i].Accept(v)
+		n.Relationships[i].Accept(v)
 	}
-	for _, node := range n.Nodes {
-		node.Accept(v)
-	}
+	n.Nodes[len(n.Nodes)-1].Accept(v)
 	return v.Leave(n)
 }
 
 func (n *PatternElement) Restore(ctx *RestoreContext) {
-	n.StartNode.Restore(ctx)
+	// n.StartNode.Restore(ctx)
 	for i := range n.Relationships {
-		n.Relationships[i].Restore(ctx)
 		n.Nodes[i].Restore(ctx)
+		n.Relationships[i].Restore(ctx)
 	}
+	n.Nodes[len(n.Nodes)-1].Restore(ctx)
 }
 
 type NodePattern struct {

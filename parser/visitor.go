@@ -408,8 +408,8 @@ func (v *ConvertVisitor) VisitPatternElement(ctx *PatternElementContext) interfa
 		return ctx
 	}
 
-	patternElement.StartNode = ctx.NodePattern().Accept(v).(*ast.NodePattern)
 	var nodes []*ast.NodePattern
+	nodes = append(nodes, ctx.NodePattern().Accept(v).(*ast.NodePattern))
 	var relationships []*ast.RelationshipPattern
 	for _, pair := range ctx.AllPatternElementChain() {
 		p := pair.Accept(v).(*PatternElementChainContext)
@@ -1063,8 +1063,8 @@ func (v *ConvertVisitor) VisitAtom(ctx *AtomContext) interface{} {
 func (v *ConvertVisitor) VisitRelationshipsPattern(ctx *RelationshipsPatternContext) interface{} {
 	patternElement := &ast.PatternElement{}
 	// same as VisitPatternElement
-	patternElement.StartNode = ctx.NodePattern().Accept(v).(*ast.NodePattern)
 	var nodes []*ast.NodePattern
+	nodes = append(nodes, ctx.NodePattern().Accept(v).(*ast.NodePattern))
 	var relationships []*ast.RelationshipPattern
 	for _, pair := range ctx.AllPatternElementChain() {
 		p := pair.Accept(v).(*PatternElementChainContext)
