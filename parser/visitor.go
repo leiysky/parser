@@ -449,11 +449,11 @@ func (v *ConvertVisitor) VisitRelationshipPattern(ctx *RelationshipPatternContex
 	if ctx.LeftArrowHead() != nil && ctx.RightArrowHead() != nil {
 		relationshipPattern.Type = ast.RelationshipBoth
 	} else if ctx.LeftArrowHead() != nil {
-		relationshipPattern.Type = ast.RelationshipLeft
+		relationshipPattern.Type = ast.RelationshipIn
 	} else if ctx.RightArrowHead() != nil {
-		relationshipPattern.Type = ast.RelationshipRight
+		relationshipPattern.Type = ast.RelationshipOut
 	} else {
-		relationshipPattern.Type = ast.RelationshipNone
+		relationshipPattern.Type = ast.RelationshipAll
 	}
 	if ctx.RelationshipDetail() != nil {
 		relationshipPattern.Detail = ctx.RelationshipDetail().Accept(v).(*ast.RelationshipDetail)

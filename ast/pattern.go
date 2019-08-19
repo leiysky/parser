@@ -143,14 +143,14 @@ func (n *NodePattern) Restore(ctx *RestoreContext) {
 type RelationshipType byte
 
 const (
-	// RelationshipLeft represents the Relationship only points to left
-	RelationshipLeft RelationshipType = iota
-	// RelationshipRight represents the Relationship only points to right
-	RelationshipRight
+	// RelationshipIn represents the Relationship only points to left
+	RelationshipIn RelationshipType = iota
+	// RelationshipOut represents the Relationship only points to right
+	RelationshipOut
 	// RelationshipBoth represents the Relationship points to both left and right
 	RelationshipBoth
-	// RelationshipNone represents the Relationship has no direction
-	RelationshipNone
+	// RelationshipAll represents the Relationship has no direction
+	RelationshipAll
 )
 
 type RelationshipPattern struct {
@@ -172,11 +172,11 @@ func (n *RelationshipPattern) Accept(v Visitor) (Node, bool) {
 
 func (n *RelationshipPattern) Restore(ctx *RestoreContext) {
 	switch n.Type {
-	case RelationshipLeft:
+	case RelationshipIn:
 		ctx.Write("<-")
 		n.Detail.Restore(ctx)
 		ctx.Write("-")
-	case RelationshipRight:
+	case RelationshipOut:
 		ctx.Write("-")
 		n.Detail.Restore(ctx)
 		ctx.Write("->")
@@ -184,7 +184,7 @@ func (n *RelationshipPattern) Restore(ctx *RestoreContext) {
 		ctx.Write("<-")
 		n.Detail.Restore(ctx)
 		ctx.Write("->")
-	case RelationshipNone:
+	case RelationshipAll:
 		ctx.Write("-")
 		n.Detail.Restore(ctx)
 		ctx.Write("-")
