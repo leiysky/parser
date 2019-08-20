@@ -126,7 +126,7 @@ func (n *ReservedWordNode) Restore(ctx *RestoreContext) {
 }
 
 type VariableNode struct {
-	baseNode
+	baseExpr
 
 	SymbolicName *SymbolicNameNode
 }
@@ -145,6 +145,10 @@ func (n *VariableNode) Restore(ctx *RestoreContext) {
 	ctx.Write("`")
 	n.SymbolicName.Restore(ctx)
 	ctx.Write("`")
+}
+
+func (n *VariableNode) Name() string {
+	return n.SymbolicName.Value
 }
 
 type NodeLabelNode struct {

@@ -17,7 +17,6 @@ var (
 	_ Expr = &BinaryExpr{}
 	_ Expr = &UnaryExpr{}
 	_ Expr = &PredicationExpr{}
-	_ Expr = &Atom{}
 	_ Expr = &PropertyExpr{}
 	_ Expr = &PropertyOrLabelsExpr{}
 	_ Expr = &LiteralExpr{}
