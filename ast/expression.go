@@ -37,7 +37,7 @@ var (
 type PropertyExpr struct {
 	baseExpr
 
-	Atom    Expr
+	Expr    Expr
 	Lookups []*PropertyLookup
 }
 
@@ -48,7 +48,7 @@ func (n *PropertyExpr) Accept(v Visitor) (Node, bool) {
 		return v.Leave(n)
 	}
 	n = newNode.(*PropertyExpr)
-	n.Atom.Accept(v)
+	n.Expr.Accept(v)
 	for _, lookup := range n.Lookups {
 		lookup.Accept(v)
 	}
@@ -56,7 +56,7 @@ func (n *PropertyExpr) Accept(v Visitor) (Node, bool) {
 }
 
 func (n *PropertyExpr) Restore(ctx *RestoreContext) {
-	n.Atom.Restore(ctx)
+	n.Expr.Restore(ctx)
 	for _, l := range n.Lookups {
 		l.Restore(ctx)
 	}
@@ -323,7 +323,7 @@ func (n *NullOperationExpr) Restore(ctx *RestoreContext) {
 type PropertyOrLabelsExpr struct {
 	baseExpr
 
-	Atom            Expr
+	Expr            Expr
 	PropertyLookups []*PropertyLookup
 	NodeLabels      []*NodeLabelNode
 }
@@ -334,7 +334,7 @@ func (n *PropertyOrLabelsExpr) Accept(v Visitor) (Node, bool) {
 		return v.Leave(n)
 	}
 	n = newNode.(*PropertyOrLabelsExpr)
-	n.Atom.Accept(v)
+	n.Expr.Accept(v)
 	for _, lookup := range n.PropertyLookups {
 		lookup.Accept(v)
 	}
@@ -345,7 +345,7 @@ func (n *PropertyOrLabelsExpr) Accept(v Visitor) (Node, bool) {
 }
 
 func (n *PropertyOrLabelsExpr) Restore(ctx *RestoreContext) {
-	n.Atom.Restore(ctx)
+	n.Expr.Restore(ctx)
 	for _, l := range n.PropertyLookups {
 		l.Restore(ctx)
 	}

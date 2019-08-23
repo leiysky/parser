@@ -958,7 +958,7 @@ func (v *ConvertVisitor) VisitPropertyOrLabelsExpr(ctx *PropertyOrLabelsExprCont
 		return ctx.Atom().Accept(v)
 	}
 	propertyOrLabelsExpr := &ast.PropertyOrLabelsExpr{}
-	propertyOrLabelsExpr.Atom = ctx.Atom().Accept(v).(ast.Expr)
+	propertyOrLabelsExpr.Expr = ctx.Atom().Accept(v).(ast.Expr)
 	if ctx.NodeLabels() != nil {
 		var labels []*ast.NodeLabelNode
 		for _, label := range ctx.NodeLabels().Accept(v).([]*ast.NodeLabelNode) {
@@ -1266,7 +1266,7 @@ func (v *ConvertVisitor) VisitProperties(ctx *PropertiesContext) interface{} {
 
 func (v *ConvertVisitor) VisitPropertyExpr(ctx *PropertyExprContext) interface{} {
 	propertyExpr := &ast.PropertyExpr{}
-	propertyExpr.Atom = ctx.Atom().Accept(v).(ast.Expr)
+	propertyExpr.Expr = ctx.Atom().Accept(v).(ast.Expr)
 	var lookups []*ast.PropertyLookup
 	for _, lookup := range ctx.AllPropertyLookup() {
 		lookups = append(lookups, lookup.Accept(v).(*ast.PropertyLookup))
