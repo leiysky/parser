@@ -34,6 +34,8 @@ var cases = []testCase{
 	{"with n as n, a as a create (n)-[]-(a)", true, "WITH `n` AS `n`, `a` AS `a` CREATE (`n`)-[*1..1]-(`a`)"},
 	{"match (n) where n.name > 1 AND 'abc' = 2 OR 1.2 <> -2 return n", true, "MATCH (`n`) WHERE `n`.`name` > 1 AND 'abc' = 2 OR 1.200000 <> -2 RETURN `n`"},
 	{"match (n) return count(*)", true, "MATCH (`n`) RETURN COUNT(*)"},
+	{"match (n) return [n in list | n+1]", true, "MATCH (`n`) RETURN [`n` IN `list` | `n` + 1]"},
+	{"match (n) return any(n in list), all(n in list), single(n in list), none(n in list where TRUE)", true, "MATCH (`n`) RETURN ANY(`n` IN `list`), ALL(`n` IN `list`), SINGLE(`n` IN `list`), NONE(`n` IN `list` WHERE TRUE)"},
 }
 
 func runTestCase(t *testing.T, cases []testCase) {
