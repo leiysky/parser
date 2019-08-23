@@ -28,7 +28,9 @@ func (n *WithClause) Accept(v Visitor) (Node, bool) {
 	}
 	n = newNode.(*WithClause)
 	n.ReturnBody.Accept(v)
-	n.Where.Accept(v)
+	if n.Where != nil {
+		n.Where.Accept(v)
+	}
 	return v.Leave(n)
 }
 
@@ -135,7 +137,9 @@ func (n *ReturnItem) Accept(v Visitor) (Node, bool) {
 		return v.Leave(n)
 	}
 	n = newNode.(*ReturnItem)
-	n.Expr.Accept(v)
+	if n.Expr != nil {
+		n.Expr.Accept(v)
+	}
 	if n.As {
 		n.Variable.Accept(v)
 	}
