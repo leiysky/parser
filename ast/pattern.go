@@ -14,7 +14,8 @@
 package ast
 
 type Pattern struct {
-	baseNode
+	baseExpr
+
 	Parts []*PatternPart
 }
 
@@ -40,7 +41,7 @@ func (n *Pattern) Restore(ctx *RestoreContext) {
 }
 
 type PatternPart struct {
-	baseNode
+	baseExpr
 
 	Variable *VariableNode
 	Element  *PatternElement
@@ -68,7 +69,7 @@ func (n *PatternPart) Restore(ctx *RestoreContext) {
 }
 
 type PatternElement struct {
-	baseNode
+	baseExpr
 
 	// Amount of Relationships is the same as that of Nodes
 	// Nodes[i], Relationships[i], Nodes[i+1]...
@@ -100,7 +101,7 @@ func (n *PatternElement) Restore(ctx *RestoreContext) {
 }
 
 type NodePattern struct {
-	baseNode
+	baseExpr
 
 	Variable   *VariableNode
 	Labels     []*NodeLabelNode
@@ -154,7 +155,7 @@ const (
 )
 
 type RelationshipPattern struct {
-	baseNode
+	baseExpr
 
 	Type   RelationshipType
 	Detail *RelationshipDetail
@@ -192,7 +193,7 @@ func (n *RelationshipPattern) Restore(ctx *RestoreContext) {
 }
 
 type RelationshipDetail struct {
-	baseNode
+	baseExpr
 
 	Variable          *VariableNode
 	RelationshipTypes []*SchemaNameNode
@@ -267,7 +268,7 @@ const (
 )
 
 type Properties struct {
-	baseNode
+	baseExpr
 
 	Type       PropertiesType
 	MapLiteral *MapLiteral
@@ -299,7 +300,7 @@ func (n *Properties) Restore(ctx *RestoreContext) {
 }
 
 type PatternComprehension struct {
-	baseNode
+	baseExpr
 
 	Variable       *VariableNode
 	PatternElement *PatternElement
