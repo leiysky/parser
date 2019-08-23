@@ -360,7 +360,11 @@ func (v *ConvertVisitor) VisitSymbolicName(ctx *SymbolicNameContext) interface{}
 }
 
 func (v *ConvertVisitor) VisitNodeLabels(ctx *NodeLabelsContext) interface{} {
-	return ctx
+	var labels []*ast.NodeLabelNode
+	for _, l := range ctx.AllNodeLabel() {
+		labels = append(labels, l.Accept(v).(*ast.NodeLabelNode))
+	}
+	return labels
 }
 
 func (v *ConvertVisitor) VisitNodeLabel(ctx *NodeLabelContext) interface{} {
@@ -426,14 +430,9 @@ func (v *ConvertVisitor) VisitNodePattern(ctx *NodePatternContext) interface{} {
 	if ctx.Variable() != nil {
 		nodePattern.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
 	}
-	var labels []*ast.NodeLabelNode
 	if ctx.NodeLabels() != nil {
-		labelsCtx := ctx.NodeLabels().Accept(v).(*NodeLabelsContext)
-		for _, label := range labelsCtx.AllNodeLabel() {
-			labels = append(labels, label.Accept(v).(*ast.NodeLabelNode))
-		}
+		nodePattern.Labels = ctx.NodeLabels().Accept(v).([]*ast.NodeLabelNode)
 	}
-	nodePattern.Labels = labels
 	if ctx.Properties() != nil {
 		nodePattern.Properties = ctx.Properties().Accept(v).(*ast.Properties)
 	}
@@ -959,11 +958,11 @@ func (v *ConvertVisitor) VisitPropertyOrLabelsExpr(ctx *PropertyOrLabelsExprCont
 		return ctx.Atom().Accept(v)
 	}
 	propertyOrLabelsExpr := &ast.PropertyOrLabelsExpr{}
-	propertyOrLabelsExpr.Atom = ctx.Atom().Accept(v).(*ast.Atom)
+	propertyOrLabelsExpr.Atom = ctx.Atom().Accept(v).(ast.Expr)
 	if ctx.NodeLabels() != nil {
 		var labels []*ast.NodeLabelNode
-		for _, label := range ctx.NodeLabels().Accept(v).(*NodeLabelsContext).AllNodeLabel() {
-			labels = append(labels, label.Accept(v).(*ast.NodeLabelNode))
+		for _, label := range ctx.NodeLabels().Accept(v).([]*ast.NodeLabelNode) {
+			labels = append(labels, label)
 		}
 		propertyOrLabelsExpr.NodeLabels = labels
 	}
@@ -1014,50 +1013,47 @@ func (v *ConvertVisitor) VisitCaseAlternatives(ctx *CaseAlternativesContext) int
 }
 
 func (v *ConvertVisitor) VisitAtom(ctx *AtomContext) interface{} {
-	atom := &ast.Atom{}
-	if ctx.Literal() != nil {
-		atom.Type = ast.AtomLiteral
-		atom.Literal = ctx.Literal().Accept(v).(*ast.LiteralExpr)
-	} else if ctx.Parameter() != nil {
-		atom.Type = ast.AtomParameter
-		atom.Parameter = ctx.Parameter().Accept(v).(*ast.ParameterNode)
-	} else if ctx.CaseExpr() != nil {
-		atom.Type = ast.AtomCase
-		atom.CaseExpr = ctx.CaseExpr().Accept(v).(*ast.CaseExpr)
-	} else if ctx.COUNT() != nil {
-		atom.Type = ast.AtomCount
-	} else if ctx.ListComprehension() != nil {
-		atom.Type = ast.AtomList
-		atom.ListComprehension = ctx.ListComprehension().Accept(v).(*ast.ListComprehension)
-	} else if ctx.PatternComprehension() != nil {
-		atom.Type = ast.AtomPatternComprehension
-		atom.PatternComprehension = ctx.PatternComprehension().Accept(v).(*ast.PatternComprehension)
-	} else if ctx.ALL() != nil {
-		atom.Type = ast.AtomAllFilter
-		atom.FilterExpr = ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
-	} else if ctx.ANY() != nil {
-		atom.Type = ast.AtomAnyFilter
-		atom.FilterExpr = ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
-	} else if ctx.NONE() != nil {
-		atom.Type = ast.AtomNoneFilter
-		atom.FilterExpr = ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
-	} else if ctx.SINGLE() != nil {
-		atom.Type = ast.AtomSingleFilter
-		atom.FilterExpr = ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
-	} else if ctx.RelationshipsPattern() != nil {
-		atom.Type = ast.AtomPattern
-		atom.PatternElement = ctx.RelationshipsPattern().Accept(v).(*ast.PatternElement)
-	} else if ctx.ParenthesizedExpr() != nil {
-		atom.Type = ast.AtomParenthesizedExpr
-		atom.ParenthesizedExpr = ctx.ParenthesizedExpr().Accept(v).(ast.Expr)
-	} else if ctx.FunctionInvocation() != nil {
+	switch {
+	case ctx.Literal() != nil:
+		return ctx.Literal().Accept(v)
+	case ctx.Parameter() != nil:
+		return ctx.Parameter().Accept(v)
+	case ctx.CaseExpr() != nil:
+		return ctx.CaseExpr().Accept(v)
+	case ctx.COUNT() != nil:
+		return &ast.CountAllExpr{}
+	case ctx.ListComprehension() != nil:
+		return ctx.ListComprehension().Accept(v)
+	case ctx.PatternComprehension() != nil:
+		return ctx.PatternComprehension().Accept(v)
+	case ctx.ALL() != nil:
+		filter := ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
+		filter.Type = ast.FilterAll
+		return filter
+	case ctx.ANY() != nil:
+		filter := ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
+		filter.Type = ast.FilterAny
+		return filter
+	case ctx.NONE() != nil:
+		filter := ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
+		filter.Type = ast.FilterNone
+		return filter
+	case ctx.SINGLE() != nil:
+		filter := ctx.FilterExpr().Accept(v).(*ast.FilterExpr)
+		filter.Type = ast.FilterSingle
+		return filter
+	case ctx.RelationshipsPattern() != nil:
+		return ctx.RelationshipsPattern().Accept(v)
+	case ctx.ParenthesizedExpr() != nil:
+		return ctx.ParenthesizedExpr().Accept(v)
+	case ctx.FunctionInvocation() != nil:
 		// TODO
 		panic("FunctionInvocation not support now")
-	} else if ctx.Variable() != nil {
-		atom.Type = ast.AtomVariable
-		atom.Variable = ctx.Variable().Accept(v).(*ast.VariableNode)
+	case ctx.Variable() != nil:
+		return ctx.Variable().Accept(v)
+	default:
+		panic("")
 	}
-	return atom
 }
 
 func (v *ConvertVisitor) VisitRelationshipsPattern(ctx *RelationshipsPatternContext) interface{} {
@@ -1270,7 +1266,7 @@ func (v *ConvertVisitor) VisitProperties(ctx *PropertiesContext) interface{} {
 
 func (v *ConvertVisitor) VisitPropertyExpr(ctx *PropertyExprContext) interface{} {
 	propertyExpr := &ast.PropertyExpr{}
-	propertyExpr.Atom = ctx.Atom().Accept(v).(*ast.Atom)
+	propertyExpr.Atom = ctx.Atom().Accept(v).(ast.Expr)
 	var lookups []*ast.PropertyLookup
 	for _, lookup := range ctx.AllPropertyLookup() {
 		lookups = append(lookups, lookup.Accept(v).(*ast.PropertyLookup))

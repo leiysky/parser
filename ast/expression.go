@@ -23,7 +23,7 @@ var (
 	_ Expr = &StringOperationExpr{}
 	_ Expr = &NullOperationExpr{}
 	_ Expr = &ListOperationExpr{}
-	_ Expr = &Atom{}
+	// _ Expr = &Atom{}
 	_ Expr = &CaseExpr{}
 	_ Expr = &CaseAlt{}
 	_ Expr = &ListComprehension{}
@@ -37,7 +37,7 @@ var (
 type PropertyExpr struct {
 	baseExpr
 
-	Atom    *Atom
+	Atom    Expr
 	Lookups []*PropertyLookup
 }
 
@@ -323,7 +323,7 @@ func (n *NullOperationExpr) Restore(ctx *RestoreContext) {
 type PropertyOrLabelsExpr struct {
 	baseExpr
 
-	Atom            *Atom
+	Atom            Expr
 	PropertyLookups []*PropertyLookup
 	NodeLabels      []*NodeLabelNode
 }
@@ -354,104 +354,104 @@ func (n *PropertyOrLabelsExpr) Restore(ctx *RestoreContext) {
 	}
 }
 
-type AtomType byte
+// type AtomType byte
 
-const (
-	AtomLiteral AtomType = iota
-	AtomParameter
-	AtomCase
-	AtomCount
-	AtomList
-	AtomPatternComprehension
-	AtomAllFilter
-	AtomAnyFilter
-	AtomNoneFilter
-	AtomSingleFilter
-	AtomPattern
-	AtomParenthesizedExpr
-	// AtomFuncInvocation
-	AtomVariable
-)
+// const (
+// 	AtomLiteral AtomType = iota
+// 	AtomParameter
+// 	AtomCase
+// 	AtomCount
+// 	AtomList
+// 	AtomPatternComprehension
+// 	AtomAllFilter
+// 	AtomAnyFilter
+// 	AtomNoneFilter
+// 	AtomSingleFilter
+// 	AtomPattern
+// 	AtomParenthesizedExpr
+// 	// AtomFuncInvocation
+// 	AtomVariable
+// )
 
-type Atom struct {
-	baseExpr
+// type Atom struct {
+// 	baseExpr
 
-	Type                 AtomType
-	Literal              *LiteralExpr
-	Parameter            *ParameterNode
-	CaseExpr             *CaseExpr
-	ListComprehension    *ListComprehension
-	FilterExpr           *FilterExpr
-	ParenthesizedExpr    Expr
-	PatternComprehension *PatternComprehension
-	PatternElement       *PatternElement
-	Variable             *VariableNode
-	// Function             *FunctionInvocation
-}
+// 	Type                 AtomType
+// 	Literal              *LiteralExpr
+// 	Parameter            *ParameterNode
+// 	CaseExpr             *CaseExpr
+// 	ListComprehension    *ListComprehension
+// 	FilterExpr           *FilterExpr
+// 	ParenthesizedExpr    Expr
+// 	PatternComprehension *PatternComprehension
+// 	PatternElement       *PatternElement
+// 	Variable             *VariableNode
+// 	// Function             *FunctionInvocation
+// }
 
-func (n *Atom) Accept(v Visitor) (Node, bool) {
-	newNode, skip := v.Enter(n)
-	if skip {
-		return v.Leave(n)
-	}
-	n = newNode.(*Atom)
-	switch n.Type {
-	case AtomLiteral:
-		n.Literal.Accept(v)
-	case AtomParameter:
-		n.Parameter.Accept(v)
-	case AtomCase:
-		n.CaseExpr.Accept(v)
-	case AtomList:
-		n.ListComprehension.Accept(v)
-	case AtomAllFilter, AtomAnyFilter, AtomNoneFilter, AtomSingleFilter:
-		n.FilterExpr.Accept(v)
-	case AtomParenthesizedExpr:
-		n.ParenthesizedExpr.Accept(v)
-	case AtomPatternComprehension:
-		n.PatternComprehension.Accept(v)
-	case AtomPattern:
-		n.PatternElement.Accept(v)
-	case AtomVariable:
-		n.Variable.Accept(v)
-	}
-	return v.Leave(n)
-}
+// func (n *Atom) Accept(v Visitor) (Node, bool) {
+// 	newNode, skip := v.Enter(n)
+// 	if skip {
+// 		return v.Leave(n)
+// 	}
+// 	n = newNode.(*Atom)
+// 	switch n.Type {
+// 	case AtomLiteral:
+// 		n.Literal.Accept(v)
+// 	case AtomParameter:
+// 		n.Parameter.Accept(v)
+// 	case AtomCase:
+// 		n.CaseExpr.Accept(v)
+// 	case AtomList:
+// 		n.ListComprehension.Accept(v)
+// 	case AtomAllFilter, AtomAnyFilter, AtomNoneFilter, AtomSingleFilter:
+// 		n.FilterExpr.Accept(v)
+// 	case AtomParenthesizedExpr:
+// 		n.ParenthesizedExpr.Accept(v)
+// 	case AtomPatternComprehension:
+// 		n.PatternComprehension.Accept(v)
+// 	case AtomPattern:
+// 		n.PatternElement.Accept(v)
+// 	case AtomVariable:
+// 		n.Variable.Accept(v)
+// 	}
+// 	return v.Leave(n)
+// }
 
-func (n *Atom) Restore(ctx *RestoreContext) {
-	switch n.Type {
-	case AtomLiteral:
-		n.Literal.Restore(ctx)
-	case AtomParameter:
-		n.Parameter.Restore(ctx)
-	case AtomCase:
-		n.CaseExpr.Restore(ctx)
-	case AtomCount:
-		ctx.WriteKeyword("COUNT(*)")
-	case AtomList:
-		n.ListComprehension.Restore(ctx)
-	case AtomPatternComprehension:
-		n.PatternComprehension.Restore(ctx)
-	case AtomAllFilter:
-		ctx.WriteKeyword("ALL ")
-		n.FilterExpr.Restore(ctx)
-	case AtomAnyFilter:
-		ctx.WriteKeyword("ANY ")
-		n.FilterExpr.Restore(ctx)
-	case AtomNoneFilter:
-		ctx.WriteKeyword("NONE ")
-		n.FilterExpr.Restore(ctx)
-	case AtomSingleFilter:
-		ctx.WriteKeyword("SINGLE ")
-		n.FilterExpr.Restore(ctx)
-	case AtomPattern:
-		n.PatternElement.Restore(ctx)
-	case AtomParenthesizedExpr:
-		n.ParenthesizedExpr.Restore(ctx)
-	case AtomVariable:
-		n.Variable.Restore(ctx)
-	}
-}
+// func (n *Atom) Restore(ctx *RestoreContext) {
+// 	switch n.Type {
+// 	case AtomLiteral:
+// 		n.Literal.Restore(ctx)
+// 	case AtomParameter:
+// 		n.Parameter.Restore(ctx)
+// 	case AtomCase:
+// 		n.CaseExpr.Restore(ctx)
+// 	case AtomCount:
+// 		ctx.WriteKeyword("COUNT(*)")
+// 	case AtomList:
+// 		n.ListComprehension.Restore(ctx)
+// 	case AtomPatternComprehension:
+// 		n.PatternComprehension.Restore(ctx)
+// 	case AtomAllFilter:
+// 		ctx.WriteKeyword("ALL ")
+// 		n.FilterExpr.Restore(ctx)
+// 	case AtomAnyFilter:
+// 		ctx.WriteKeyword("ANY ")
+// 		n.FilterExpr.Restore(ctx)
+// 	case AtomNoneFilter:
+// 		ctx.WriteKeyword("NONE ")
+// 		n.FilterExpr.Restore(ctx)
+// 	case AtomSingleFilter:
+// 		ctx.WriteKeyword("SINGLE ")
+// 		n.FilterExpr.Restore(ctx)
+// 	case AtomPattern:
+// 		n.PatternElement.Restore(ctx)
+// 	case AtomParenthesizedExpr:
+// 		n.ParenthesizedExpr.Restore(ctx)
+// 	case AtomVariable:
+// 		n.Variable.Restore(ctx)
+// 	}
+// }
 
 type PropertyLookup struct {
 	Node
@@ -540,9 +540,20 @@ func (n *CaseAlt) Restore(ctx *RestoreContext) {
 	n.Then.Restore(ctx)
 }
 
+type FilterType byte
+
+const (
+	FilterListComprehension FilterType = iota
+	FilterAll
+	FilterAny
+	FilterSingle
+	FilterNone
+)
+
 type FilterExpr struct {
 	baseExpr
 
+	Type     FilterType
 	Variable *VariableNode
 	In       Expr
 	Where    Expr
@@ -563,6 +574,20 @@ func (n *FilterExpr) Accept(v Visitor) (Node, bool) {
 }
 
 func (n *FilterExpr) Restore(ctx *RestoreContext) {
+	switch n.Type {
+	case FilterAll:
+		ctx.WriteKeyword("ALL(")
+		defer ctx.Write(")")
+	case FilterAny:
+		ctx.WriteKeyword("ANY(")
+		defer ctx.Write(")")
+	case FilterNone:
+		ctx.WriteKeyword("NONE(")
+		defer ctx.Write(")")
+	case FilterSingle:
+		ctx.WriteKeyword("SINGLE(")
+		defer ctx.Write(")")
+	}
 	n.Variable.Restore(ctx)
 	ctx.WriteKeyword(" IN ")
 	n.In.Restore(ctx)
@@ -627,4 +652,21 @@ func (n *ParenExpr) Restore(ctx *RestoreContext) {
 	ctx.Write("(")
 	n.Expr.Restore(ctx)
 	ctx.Write(")")
+}
+
+type CountAllExpr struct {
+	baseExpr
+}
+
+func (n *CountAllExpr) Accept(v Visitor) (Node, bool) {
+	newNode, skip := v.Enter(n)
+	if skip {
+		return v.Leave(n)
+	}
+	n = newNode.(*CountAllExpr)
+	return v.Leave(n)
+}
+
+func (n *CountAllExpr) Restore(ctx *RestoreContext) {
+	ctx.WriteKeyword("COUNT(*)")
 }
